@@ -8,7 +8,7 @@
 
 通常我们应该使用`STDIN_FILENO`，`STDOUT_FILENO`和 `STDERR_FILENO`来替代这三个幻数，从而提高可读性。这三个常量位于`<unistd.h>`中。
 
-2.open和openat函数：
+2.`open`和`openat`函数：打开文件
 
 ```
 #include<fcntl.h>
@@ -23,4 +23,300 @@ int openat(int fd,const char*path,int oflag,.../*mode_t mode */);
 	- `O_RDONLY`常量：文件只读打开
 	- `O_WRONLY`常量：文件只写打开
 	- `O_RDWR`常量：文件读、写打开
-	- `O_EXEC`常量：
+	- `O_EXEC`常量：只执行打开
+	- `O_SEARCH`常量：只搜索打开（应用于目录）。本文涉及的操作系统都没有支持该常量
+	
+	在上面五个常量中必须指定且只能指定一个。下面的常量是可选的（进行或运行）：
+
+	- `O_APPEND`：每次写时都追加到文件的尾端
+	- `O_CLOEXEC`：将`FD_CLOEXEC`常量设置为文件描述符标志
+	- `O_CREAT`：若此文件不存在则创建它。在使用此选项时，需要同时说明参数`mode`（指定该文件的访问权限）
+		-  文件访问权限常量在 `<sys/stat.h>` 中定义，有下列九个：
+			- `S_IRUSR`：用户读
+			- `S_IWUSR`：用户写
+			- `S_IXUSR`：用户执行
+			- `S_IRGRP`：组读
+			- `S_IWGRP`：组写			
+			- `S_IXGRP`：组执行			
+			- `S_IROTH`：其他读
+			- `S_IWOTH`：其他写
+			- `S_IXOTH`：其他执行   
+
+	- `O_DIRECTORY`：若`path`引用的不是目录，则出错
+	- `O_EXCL`：若同时指定了`O_CREAT`时，且文件已存在则出错。根据此可以测试一个文件是否存在。若不存在则创建此文件。这使得测试和创建两者成为一个原子操作
+	- `O_NOCTTY`：若`path`引用的是终端设备，则不将该设备分配作为此进程的控制终端
+	- `O_NOFOLLOW`：若`path`引用的是一个符号链接，则出错
+	- `O_NONBLOCK`：如果`path`引用的是一个`FIFO`、一个块特殊文件或者一个字符特殊文件，则文件本次打开操作和后续的 I/O 操作设为非阻塞模式。
+	- `O_SYNC`：每次 `write` 等待物理 I/O 完成，包括由 `write` 操作引起的文件属性更新所需的 I/O 
+	- `O_TRUNC`： 如果此文件存在，且为`O_WRONLY`或者`O_RDWR`成功打开，则将其长度截断为0
+	- `O_RSYNC`：使每一个`read`操作等待，直到所有对文件同一部分挂起的写操作都完成。
+	- `O_DSYNC`：每次 `write` 等待物理 I/O 完成，但不包括由 `write` 操作引起的文件属性更新所需的 I/O 
+- `openat`的 `fd`参数：存在三种可能：
+	- 如果`path`指定的是绝对路径，此时`fd`被忽略。`openat`等价于`open`
+	- 如果`path`指定的是相对路径名，则`fd`是一个目录打开的文件描述符。被打开的文件的绝对路径由该`fd`描述符对应的目录加上`path`组合而成
+	- 如果`path`是一个相对路径名，而`fd`是常量`AT_FDCWD`，则`path`相对于当前工作目录。被打开文件在当前工作目录中查找。
+
+返回值：
+	
+- 成功：返回文件描述符
+- 失败：返回 -1
+
+3.`creat`函数：创建一个新文件
+
+```
+#include<fcntl.h>
+int creat(const char*path,mode_t mode);
+```
+
+参数：
+
+- `path`:要创建文件的名字
+- `mode`：指定该文件的访问权限文件访问权限常量在 `<sys/stat.h>` 中定义，有下列九个：
+	- `S_IRUSR`：用户读
+	- `S_IWUSR`：用户写
+	- `S_IXUSR`：用户执行
+	- `S_IRGRP`：组读
+	- `S_IWGRP`：组写			
+	- `S_IXGRP`：组执行			
+	- `S_IROTH`：其他读
+	- `S_IWOTH`：其他写
+	- `S_IXOTH`：其他执行   
+
+返回值：
+
+- 成功： 返回`O_WRONLY`打开的文件描述符
+- 失败： 返回 -`
+
+该函数等价于`open(path,O_WRONLY|O_CREAT|O_TRUNC,mode)`
+> 注意它以只写方式打开，因此若要读取该文件，则必须先关闭，然后重新以读方式打开
+
+若文件已存在则将文件截断为0。
+
+4.打开和创建文件的测试：
+
+```
+#include <stdio.h>
+#include<fcntl.h>
+#include<string.h>
+#include<errno.h>
+
+void output_message(int ok,const char * action,const char * path)
+{
+    if(ok==-1)
+    {
+        printf("\t%s %s failed!\n",action,path);
+        fprintf(stderr,"\tBecause:EACCESS:%s\n",strerror(EACCES));
+    }
+    else
+        printf("\t%s %s success!\n",action,path);
+}
+
+void my_open(const char* path)
+{
+    int ok=0;
+    ok=open(path,O_RDONLY); //open file
+    output_message(ok,"open ",path);
+}
+void my_openat(int fd,const char* path)
+{
+    int ok=0;
+    ok=openat(fd,path,O_RDONLY);//open a file
+    output_message(ok,"openat ",path);
+}
+void my_creat(const char* path)
+{
+    int ok=0;
+    ok=creat(path,S_IWUSR|S_IWUSR);//create a file
+    output_message(ok,"creat ",path);
+
+}
+void my_open_creat(const char* path)
+{
+    int ok=0;
+    ok=open(path,O_RDONLY|O_CREAT,S_IWUSR|S_IWUSR);
+    output_message(ok,"open creat ",path);
+}
+void my_open_creat_excl(const char* path)
+{
+    int ok=0;
+    ok=open(path,O_RDONLY|O_CREAT|O_EXCL,S_IWUSR|S_IWUSR);//open a file,creat excl option
+    output_message(ok,"open creat excl ",path);
+}
+int main(int argc, char *argv[])
+{
+    int fd;
+    printf("test open:\n");
+    my_open("/home/huaxz1986/test/exist_op");
+    my_open("/home/huaxz1986/test/no_exist_op");
+    printf("test openat:\n");
+    fd=open("/home/huaxz1986/test/",O_RDONLY);
+    my_openat(fd,"exist_opat");
+    my_openat(fd,"no_exist_opat");
+    printf("test creat:\n");
+    my_creat("/home/huaxz1986/test/exist_crt");
+    my_creat("/home/huaxz1986/test/no_exist_crt");
+    printf("test open creat:\n");
+    my_open_creat("/home/huaxz1986/test/exist_opcrt");
+    my_open_creat("/home/huaxz1986/test/no_exist_opcrt");
+    printf("test open creat excl:\n");
+    my_open_creat_excl("/home/huaxz1986/test/exist_opcrtecl");
+    my_open_creat_excl("/home/huaxz1986/test/no_exist_opcrtecl");
+    return 0;
+}
+```
+![open_creat](../imgs/APUE/open_creat.JPG)
+
+可以看到：
+
+- 若文件存在：
+	- 简单的`open()`和`openat()`成功打开
+	- 带`O_CREAT`选项的`open()`成功打开
+	- 带`O_CREAT|O_EXCL`选项的`open()`打开失败
+	- `creat()`成功打开并且将文件截断为0
+- 若文件不存在：
+	- 简单的`open()`和`openat()`打开失败
+	- 带`O_CREAT`选项的`open()`成功创建文件，打开并且将文件截断为0
+	- 带`O_CREAT|O_EXCL`选项的`open()`成功创建文件，打开并且将文件截断为0
+	- `creat()`成功创建文件，打开并且将文件截断为0
+	
+
+5.`close`函数：关闭文件
+
+```
+#include<unistd.h>
+int close(int fd);
+```
+
+参数：
+
+- `fd`：待关闭文件的文件描述符
+
+返回值：
+
+- 成功：返回 0
+- 失败：返回 -1
+
+进程关闭一个文件会释放它加在该文件上的所有记录锁。
+
+当一个进程终止时，内核会自动关闭它所有的打开的文件。
+
+6.`lseek`函数：设置打开文件的偏移量
+
+```
+#include<unistd.h>
+off_t lseek(int fd, off_t offset,int whence);
+```
+
+参数：
+
+- `fd`：打开的文件的文件描述符
+- `whence`：必须是 `SEEK_SET`、`SEEK_CUR`、`SEEK_END`三个常量之一
+- `offset`：
+	- 如果 `whence`是`SEEK_SET`，则将该文件的偏移量设置为距离文件开始处`offset`个字节
+	- 如果 `whence` 是 `SEEK_CUR`，则将该文件的偏移量设置为当前值加上`offset`个字节，`offset`可正，可负
+	- 如果 `whence` 是 `SEEK_END`，则将该文件的偏移量设置为文件长度加上`offset`个字节，`offset`可正，可负
+
+返回值：
+
+- 成功： 返回新的文件偏移量
+- 失败：返回 -1
+
+每个打开的文件都有一个与其关联的“当前文件偏移量”。它通常是个非负整数，用于度量从文件开始处计算的字节数。通常读、写操作都从当前文件偏移量处开始，并且使偏移量增加所读写的字节数。
+> 打开一个文件时，除法指定`O_APPEND`选项，否则系统默认将该偏移量设为0
+
+- 如果文件描述符指定的是一个管道、FIFO、或者网络套接字，则无法设定当前文件偏移量，则`lseek`将返回 -1 ，并且将 `errno` 设置为 `ESPIPE`。
+- 对于普通文件，其当前文件偏移量必须是非负值。但是某些设备运行负的偏移量出现。因此比较`lseek`的结果时，不能根据它小于0 就认为出错。要根据是否等于 -1 来判断是否出错。
+- `lseek` 并不会引起任何 I/O 操作，`lseek`仅仅将当前文件的偏移量记录在内核中。
+- 当前文件偏移量可以大于文件的当前长度。此时对该文件的下一次写操作将家常该文件，并且在文件中构成一个空洞。空洞中的内容位于文件中但是没有被写过，其字节被读取时都被读为0
+	> 文件中的空洞并不要求在磁盘上占据存储区。具体处理方式与操作系统有关
+
+7.`read`函数：读取文件内容
+
+```
+#include<unistd.h>
+ssize_t read(int fd,void *buf,size_t nbytes);
+```
+
+参数：
+
+- `fd`：打开的文件的文件描述符
+- `buf`：存放读取内容的缓冲区的地址（由程序员手动分配）
+- `nbytes`：期望读到的字节数
+
+返回值：
+
+- 成功：返回读到的字节数，若已到文件尾则返回 0
+- 失败：返回 -1
+
+读操作从文件的当前偏移量开始，在成功返回之前，文件的当前偏移量会增加实际读到的字节数。
+
+> 有多种情况可能导致实际读到的字节数少于期望读到的字节数：
+>
+>- 读普通文件时，在读到期望字节数之前到达了文件尾端
+>- 当从终端设备读时，通常一次最多读取一行（终端默认是行缓冲的）
+>- 当从网络读时，网络中的缓存机制可能造成返回值小于期望读到的字节数
+>- 当从管道或者` FIFO `读时，若管道包含的字节少于所需的数量，则 `read`只返回实际可用的字节数
+>- 当从某些面向记录的设备（如磁带）中读取时，一次最多返回一条记录
+>- 当一个信号造成中断，而已读了部分数据时。
+
+8.`write`函数：想文件写数据
+
+```
+#include<unistd.h>
+ssize_t write(int fd,const void *buf,size_t nbytes);
+```
+
+参数：
+
+- `fd`：打开的文件的文件描述符
+- `buf`：存放待写的数据内容的缓冲区的地址（由程序员手动分配）
+- `nbytes`：期望写入文件的字节数
+
+返回值：
+
+- 成功：返回已写的字节数
+- 失败：返回 -1
+
+`write`的返回值通常都是与`nbytes`相同。否则表示出错。`write`出错的一个常见原因是磁盘写满，或者超过了一个给定进行的文件长度限制
+
+对于普通文件，写操作从文件的当前偏移量处开始。如果打开文件时指定了`O_APPEND`选项，则每次写操作之前，都会将文件偏移量设置在文件的当前结尾处。在一次成功写之后，该文件偏移量增加实际写的字节数。
+
+9.内核使用三种数据结构表示打开文件。它们之间的关系决定了一个进程与另一个进程在打开的文件之间的相互影响。
+
+- 内核为每个进程分配一个进程表项（所有进程表项构成进程表），进程表中都有一个打开的文件描述符表。每个文件描述符占用一项，其内容为：
+	- 文件描述符标志
+	- 指向一个文件表项的指针
+- 内核为每个打开的文件分配一个文件表项（所有的文件表项构成文件表）。每个文件表项的内容包括：
+	- 文件状态标志（读、写、添写、同步和阻塞等）
+	- 当前文件偏移量
+	- 指向该文件 v 结点表项的指针
+- 每个打开的文件或者设备都有一个 v 结点结构。 v 结点结构的内容包括： 
+	- 文件类型和对此文件进行各种操作函数的指针。
+	- 对于大多数文件， v 结点还包含了该文件的 i 结点。
+
+	> 这些信息都是在打开文件时从磁盘读入内存的。如 i 结点包含了文件的所有者、文件长度、指向文件实际数据在磁盘上所在位置的指针等等。 v 结点结构和 i 结点结构实际上代表了文件的实体。
+
+~~~mermaid
+graph LR;
+A[进程A]-->C;
+B[进程B]-->D;
+C[文件表项1]-->E[v结点表项];
+D[文件表项2]-->E;
+E[v结点表项]-->F[i结点表项];
+F-->E;
+~~~
+
+现在假设进程 A 打开文件 `file1`，返回文件描述符 3；进程 B 也打开文件 `file2`，返回文件描述符 4：
+
+- 内核在文件表上新增两个表项：
+	- 这两个文件表项指向同一个 v 结点表项
+	- 进程 A 、B 各自的文件描述符表项分别指向这两个文件表项；
+- 对文件的操作结果：
+	- 进程 A 每次 `write` 之后，进程 A 对应的文件表项的当前文件偏移量即增加所写入的字节数。
+		- 若这导致当前文件偏移量超过当前文件长度，则修改 i 节点的当前文件长度，设为当前文件偏移量
+	- 如果进程 B 用 `O_APPEND`标志打开一个文件，在相应标志也设置到进程 B 对于的文件表项的文件状态标志中。
+		- 每次进程 B 对具有追加写标志的文件执行写操作时，文件表项中的当前文件偏移量首先被置为 i 结点中的文件长度。
+	- 若进程 B 用 `lseek` 定位到文件当前的尾端，则进程 B 对应的文件表项的当前文件偏移量设置为 i 结点中的当前长度
+	- `lseek` 函数只是修改文件表项中的当前文件偏移量，不进行任何 I/O 操作
+- 可能一个进程中有多个文件描述符指向同一个文件表项。
+	
