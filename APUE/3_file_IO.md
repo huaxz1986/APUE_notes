@@ -58,8 +58,10 @@ int openat(int fd,const char*path,int oflag,.../*mode_t mode */);
 
 返回值：
 	
-- 成功：返回文件描述符
+- 成功：返回文件描述符。
 - 失败：返回 -1
+
+由 `open/openat` 返回的文件描述符一定是最小的未使用的描述符数字。
 
 3.`creat`函数：创建一个新文件
 
@@ -164,7 +166,7 @@ int main(int argc, char *argv[])
     return 0;
 }
 ```
-![open_creat](../imgs/APUE/open_creat.JPG)
+  ![open_creat](../imgs/APUE/open_creat.JPG)
 
 可以看到：
 
@@ -281,7 +283,103 @@ ssize_t write(int fd,const void *buf,size_t nbytes);
 
 对于普通文件，写操作从文件的当前偏移量处开始。如果打开文件时指定了`O_APPEND`选项，则每次写操作之前，都会将文件偏移量设置在文件的当前结尾处。在一次成功写之后，该文件偏移量增加实际写的字节数。
 
-9.内核使用三种数据结构表示打开文件。它们之间的关系决定了一个进程与另一个进程在打开的文件之间的相互影响。
+9.测试`lseek,read,write`：
+
+```
+#include <stdio.h>
+#include<unistd.h>
+#include<fcntl.h>
+#include<string.h>
+#include<errno.h>
+void test_read(int fd,void* read_buffer,ssize_t len)
+{
+    int read_num;
+    read_num=read(fd,read_buffer,len);
+    if(read_num<0)
+    {
+        printf("\tread error!\n");
+        fprintf(stderr,"\tBeause:%s\n",strerror(errno));
+    }else
+    {
+        printf("\tread num:%d(expexted read :%d)\n",read_num,len);
+    }
+}
+void test_write(int fd,void*write_buffer,ssize_t len)
+{
+    int write_num;
+    write_num=write(fd,write_buffer,len);
+    if(write_num<0)
+    {
+        printf("\twrite error!\n");
+        fprintf(stderr,"\tBeause:%s\n",strerror(errno));
+    }else
+    {
+        printf("\twrite num:%d(expexted write :%d)\n",write_num,len);
+    }
+}
+
+void test_lseek(int fd,off_t offset,int loc)
+{
+    int seek_ok;
+    seek_ok=lseek(fd,offset,loc);
+    if(-1==seek_ok)
+    {
+        printf("\tlseek error!\n");
+        fprintf(stderr,"\tBeause:%s\n",strerror(errno));
+
+    }else
+    {
+        printf("\tlseek ok.New offset is:%d\n",seek_ok);
+    }
+}
+
+int main(int argc, char *argv[])
+{
+    int fd;
+    char read_buffer[20];
+    char write_buffer[10];
+    strcpy(write_buffer,"123456789");
+
+    fd=openat(AT_FDCWD,"test",O_RDWR|O_TRUNC);
+
+    printf("File is empty:\n");
+    test_read(fd,read_buffer,20);
+    test_write(fd,write_buffer,10);
+    test_read(fd,read_buffer,20);
+    printf("Lseek to begin:\n");
+    test_lseek(fd,0,SEEK_SET);
+    test_read(fd,read_buffer,20);
+    printf("Lseek to end+10:\n");
+    test_lseek(fd,10,SEEK_END);
+    test_read(fd,read_buffer,20);
+    test_write(fd,write_buffer,10);
+    test_read(fd,read_buffer,20);
+    printf("Lseek to begin:\n");
+    test_lseek(fd,0,SEEK_SET);
+    test_read(fd,read_buffer,20);
+    test_read(fd,read_buffer,20);
+    return 0;
+}
+```
+
+  ![lseek_read_write](../imgs/APUE/lseek_read_write.JPG)
+
+测试序列为：
+
+- 开始文件为空，所以读取20个字节的`read`只读取0
+- 写入文件10个字节
+- 读取文件。此时读和写共享一个当前文件偏移。而且当前文件偏移被`write`置于文件结尾。此时读取0个字节
+- 执行`lseek`将当前文件偏移量重置到文件开头，返回0（新的文件偏移量）
+- 读取文件，只能读取10个字节（因为文件此时就10个字节）
+- 执行`lseek`将文件偏移量放到文件末尾之后的10个字节，返回20（新的文件偏移量）
+- 读取文件。此时当前文件偏移被置于文件结尾。此时读取0个字节
+- 写入文件10个字节
+- 读取文件。此时当前文件偏移被`write`置于文件结尾。此时读取0个字节
+- 执行`lseek`将当前文件偏移量重置到文件开头，返回0（新的文件偏移量）
+- 读取文件，读取20个字节（因为文件结尾的偏移是30个字节）
+- 读取文件，只能读取10个字节（因为文件结尾的偏移是30个字节）
+
+10.内核使用三种数据结构表示打开文件。它们之间的关系决定了一个进程与另一个进程在打开的文件之间的相互影响。
 
 - 内核为每个进程分配一个进程表项（所有进程表项构成进程表），进程表中都有一个打开的文件描述符表。每个文件描述符占用一项，其内容为：
 	- 文件描述符标志
@@ -319,4 +417,276 @@ F-->E;
 	- 若进程 B 用 `lseek` 定位到文件当前的尾端，则进程 B 对应的文件表项的当前文件偏移量设置为 i 结点中的当前长度
 	- `lseek` 函数只是修改文件表项中的当前文件偏移量，不进行任何 I/O 操作
 - 可能一个进程中有多个文件描述符指向同一个文件表项。
-	
+
+
+11.原子操作：
+
+- 追加一个文件时，不能通过`lseek`到末尾然后`write`。要用`O_APPEND`选项打开文件，然后直接`write`。
+	- 通过`lseek`到末尾然后`write`时，如果多个进程同时执行这两个操作，则会引起竞争条件
+	- 通过 `O_APPEND`选项打开文件，然后直接`write`时，内核每一次在写操作之前，都会将进程的当前偏移量设置到文件的末尾，于是就不需要执行`lseek`定位操作
+- `pread/pwrite`可以执行原子性的定位读/定位写
+- `O_CREAT|O_EXCL`选项打开文件时，可以原子性的检查文件是否存在和创建文件这两个操作。
+
+12.`pread/pwrite`：
+
+```
+#include<unistd.h>
+ssize_t pread(int fd,void*buf,size_t nbytes,off_t offset);
+ssize_t pwrite(int fd,const void*buf,size_t nbytes,off_t offset);
+```
+
+参数：
+
+- `fd`：打开的文件描述符
+- `buf`：读出数据存放的缓冲区/ 写到文件的数据的缓冲区
+- `nbytes`：预期读出/写入文件的字节数
+- `offset`：从文件指定偏移量开始执行`read/write`
+
+返回：
+
+- 成功：读到的字节数/已写的字节数
+- 失败： -1
+
+调用`pread`相当于先调用`lseek`再调用`read`.但是调用`pread`时，无法中断其定位和读操作，并且不更新当前文件偏移量；调用`pwrite`相当于先调用`lseek`再调用`write`.但是调用`pwrite`时，无法中断其定位和写操作，并且不更新当前文件偏移量
+
+  ![pread_pwrite](../imgs/APUE/pread_pwrite.JPG)
+
+13.`dup/dup2`：复制一个现有的文件描述符：
+
+```
+#include<unistd.h>
+int dup(int fd);
+int dup2(int fd,int fd2);
+```
+
+参数：
+
+- `fd`：被复制的文件描述符（已被打开）
+- `fd2`：指定的新的文件描述符（待生成）
+
+返回值：
+
+- 成功： 返回新的文件描述符
+- 失败： 返回 -1
+
+对于`dup`函数，返回的新的文件描述符一定是当前可用的文件描述符中最小的数字。对于`dup2`函数：
+
+- 如果 `fd2`已经是被打开的文件描述符且不等于`fd`，则先将其关闭，然后再打开（<font color='red'>注意关闭再打开是一个原子操作</font>）
+- 如果 `fd2`等于`fd`，则直接返回`fd2`（也等于`fd`），而不作任何操作
+
+任何情况下，这个返回的新的文明描述符与参数`fd`共享同一个文件表项（因此文件状态标志以及文件偏移量都会共享）。
+任何情况下，这个返回的新的文明描述符的`close-on-exec`标志总是被清除
+
+  ![dup_dup2](../imgs/APUE/dup_dup2.JPG)
+
+14.UNIX操作系统在内核中设有缓冲区，大多数磁盘 I/O 都通过缓冲区进行。当我们想文件写入数据时，内核通常都首先将数据复制到缓冲区中，然后排入队列，晚些时候再写入磁盘。这种方式称为延迟写。
+
+- 当内核需要重用缓冲区来存方其他数据时，它会把所有延迟写的数据库写入磁盘
+- 你也可以调用下列函数来显式的将延迟写的数据库写入磁盘
+
+```
+#include<unistd.h>
+int fsync(int fd);
+int fdatasync(int fd);
+void sync(void);
+```
+
+参数（前两个函数）：
+
+- `fd`：指定的打开的文件描述符
+
+返回值（前两个函数）：
+
+- 成功：返回 0
+- 失败： 返回 -1
+
+区别：
+
+- `sync`：将所有修改过的块缓冲区排入写队列，然后返回，它并不等待时机写磁盘结束
+- `fsync`：只对由`fd`指定的单个文件起作用，等待写磁盘操作结束才返回
+- `fdatasync`：只对由`fd`指定的单个文件起作用，等待写磁盘操作结束才返回，但是它只影响文件的数据部分（`fsync`会同步更新文件的属性）
+
+> `update` 守护进程会周期性的调用`sync`函数。命令`sync`也会调用`sync`函数
+
+15.`fcntl`函数：改变已经打开的文件的属性
+
+```
+#include<fcntl.h>
+int fcntl(int fd,int cmd,.../* int arg */);
+```
+
+参数：
+
+- `fd`：已打开文件的描述符
+- `cmd`：有下列若干种：
+	- `F_DUPEF`常量：复制文件描述符 `fd`。新文件描述符作为函数值返回。它是尚未打开的个描述符中大于或等于`arg`中的最小值
+		- 新文件描述符与`fd`共享同一个文件表项，但是新描述符有自己的一套文件描述符标志，其中`FD_CLOEXEC`文件描述符标志被清除
+	- `F_DUPFD_CLOEXEC`常量：复制文件描述符。新文件描述符作为函数值返回。它是尚未打开的个描述符中大于或等于`arg`中的最小值
+		- 新文件描述符与`fd`共享同一个文件表项，但是新描述符有自己的一套文件描述符标志，其中`FD_CLOEXEC`文件描述符标志被设置
+	- `F_GETFD`常量：对应于`fd`的文件描述符标志作为函数值返回。当前只定义了一个文件描述符标志`FD_CLOEXEC`
+	- `F_SETFD`常量：设置`fd`的文件描述符标志为`arg`
+	- `F_GETFL`常量：返回`fd`的文件状态标志。
+		> 文件状态标志必须首先用屏蔽字 `O_ACCMODE` 取得访问方式位，
+		然后与`O_RDONLY`、`O_WRONLY`、`O_RDWR`、`O_EXEC`、`O_SEARCH`比较
+		（这5个值互斥，且并不是各占1位）。剩下的还有：`O_APPEND`、`O_NONBLOCK`、`O_SYNC`
+		、`O_DSYNC`、`O_RSYNC`、`F_ASYNC`、`O_ASYNC`
+	- `F_SETFL`常量：设置`fd`的文件状态标志为 `arg`。可以更改的标志是：
+	  `O_APPEND`、`O_NONBLOCK`、`O_SYNC`、`O_DSYNC`、`O_RSYNC`、`F_ASYNC`、`O_ASYNC`
+	- `F_GETOWN`常量：获取当前接收 `SIGIO`和`SIGURG`信号的进程 `ID`或者进程组 `ID`
+	- `F_SETOWN`常量：设置当前接收 `SIGIO`和`SIGURG`信号的进程 `ID`或者进程组 `ID`为`arg`
+		- 若 `arg`是个正值，则设定进程 `ID`
+		- 若 `arg`是个负值，则设定进程组`ID`	
+	- `F_GETLK`、`F_SETLK`、`F_SETLKW`：获取/设置文件记录锁
+- `arg`：依赖于具体的命令 
+
+返回值：
+
+- 成功： 依赖于具体的命令
+- 失败： 返回 -1
+
+```
+#include <stdio.h>
+#include<fcntl.h>
+#include<unistd.h>
+#include<string.h>
+#include<errno.h>
+void print_error(int fd,const char* action,int result)
+{
+    if(result==-1)
+    {
+        printf("\t %s on fd(%d) error:beause %s!\n",action,fd,strerror(errno));
+    }
+}
+
+void test_get_fd(int fd)
+{
+    printf("\tget_fd on fd(%d):",fd);
+    int result;
+    result=fcntl(fd,F_GETFD);
+    print_error(fd,"F_GETFD",result);
+    if(result!=-1)
+        printf("return:%d !\n",result);
+
+}
+void test_set_fd(int fd, int flag)
+{
+    printf("\tset_fd on fd(%d) of flag(%d):",fd,flag);
+    int result;
+    result=fcntl(fd,F_SETFD,flag);
+    print_error(fd,"F_SETFD",result);
+    if(result!=-1)
+        printf("set_fd ok !\n");
+}
+int test_dup_fd(int fd,int min_fd)
+{
+    printf("\tdup_fd on fd(%d),set min_fd(%d),:",fd,min_fd);
+    int result;
+    result=fcntl(fd,F_DUPFD,min_fd);
+    print_error(fd,"F_DUPFD",result);
+    if(result!=-1)
+        printf("return:%d !\n",result);
+    return result;
+}
+int test_dup_exec_fd(int fd,int min_fd)
+{
+    printf("\tdup_exec_fd on fd(%d),set min_fd(%d),:",fd,min_fd);
+    int result;
+    result=fcntl(fd,F_DUPFD_CLOEXEC,min_fd);
+    print_error(fd,"F_DUPFD_CLOEXEC",result);
+    if(result!=-1)
+        printf("return:%d !\n",result);
+    return result;
+}
+void test_get_fl(int fd)
+{
+    printf("\tget_fl on fd(%d):",fd);
+    int result;
+    result=fcntl(fd,F_GETFL);
+    print_error(fd,"F_GETFL",result);
+    if(result!=-1)
+    {
+        printf("F_GETFL on fd(%d) has ",fd);
+        if(result&O_APPEND) printf("\tO_APPEND;");
+        if(result&O_NONBLOCK) printf("\tO_NONBLOCK;");
+        if(result&O_SYNC) printf("\tO_SYNC;");
+        if(result&O_DSYNC) printf("\tO_DSYNC;");
+        if(result&O_RSYNC) printf("\tO_RSYNC;");
+        if(result&O_FSYNC) printf("\tO_FSYNC;");
+        if(result&O_ASYNC) printf("\thas O_ASYNC;");
+        if((result&O_ACCMODE)==O_RDONLY)printf("\tO_RDONLY;");
+        if((result&O_ACCMODE)==O_WRONLY)printf("\thas O_WRONLY;");
+        if((result&O_ACCMODE)==O_RDWR)printf("\tO_RDWR;");
+        printf("\n");
+    }
+}
+void test_set_fl(int fd,int flag)
+{
+    printf("\tset_fl on fd(%d) of flag(%d):",fd,flag);
+    int result;
+    result=fcntl(fd,F_SETFL,flag);
+    print_error(fd,"F_SETFL",result);
+    if(result!=-1)
+        printf("set_fl ok !\n");
+}
+void test_get_own(int fd)
+{
+    printf("\tget_own on fd(%d):",fd);
+    int result;
+    result=fcntl(fd,F_GETOWN);
+    print_error(fd,"F_GETOWN",result);
+    if(result!=-1)
+        printf("return:%d !\n",result);
+}
+void test_set_own(int fd,int pid)
+{
+    printf("\tset_own on fd(%d) of pid(%d):",fd,pid);
+    int result;
+    result=fcntl(fd,F_SETOWN,pid);
+    print_error(fd,"F_SETOWN",result);
+    if(result!=-1)
+        printf("set_own ok !\n");
+}
+int main(int argc, char *argv[])
+{
+    int fd;
+    fd=openat(AT_FDCWD,"test.txt",O_WRONLY|O_CREAT,S_IRUSR|S_IWUSR);
+    printf("Test dup:\n");
+    test_get_fd(test_dup_fd(fd,10));
+    test_get_fd(test_dup_fd(fd,0));
+    test_get_fd(test_dup_exec_fd(fd,10));
+    test_get_fd(test_dup_exec_fd(fd,0));
+    printf("Test set_get_fd:\n");
+    test_get_fd(fd);
+    test_set_fd(fd,~FD_CLOEXEC);
+    test_get_fd(fd);
+    test_set_fd(fd,FD_CLOEXEC);
+    test_get_fd(fd);
+    printf("Test set_get_fl:\n");
+    test_get_fl(fd);
+    test_set_fl(fd,O_RDWR);
+    test_get_fl(fd);
+    test_set_fl(fd,O_RDONLY|O_NONBLOCK);
+    test_get_fl(fd);
+    printf("Test set_get own:\n");
+    test_get_own(fd);
+    test_set_fl(fd,1);
+    test_get_own(fd);
+    return 0;
+}
+```
+
+  ![fcntl](../imgs/APUE/fcntl.JPG)
+
+注意：
+
+- Linux 下，不支持文件状态标志： `F_EXEC与`， `F_SEARCH`
+- `(result&O_ACCMODE)==O_RDONLY` 表达式中， `&`优先级较低
+- `F_SETFL`命令：当文件读打开时，你无法将文件状态标志修改为`O_WRONLY`、`O_WRWR`这两种中任何一个。你只能修改：`O_APPEND`、`O_NONBLOCK`、`O_SYNC`、`O_DSYNC`、`O_RSYNC`、`F_ASYNC`、`O_ASYNC`等标志
+
+15.`/dev/fd`目录：该目录下是名为`0、1、2`等的文件。打开文件`/dev/fd/n`等效于复制描述符（假定描述符`n`是打开的）
+
+- `fd=open("/dev/fd/0",mod)`：`fd`和文件描述符`0`共享同一个文件表项。
+	- 大多数系统忽略`mod`参数
+- 在 Linux 操作系统上， `/dev/fd/0`是个例外，它是个底层物理文件的符号链接。因此在它上面调用`creat` 会导致底层文件被截断
+
+  ![dev_fd](../imgs/APUE/dev_fd.JPG)
