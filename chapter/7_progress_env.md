@@ -130,11 +130,12 @@
 	- 终止处理程序`exit handler` 调用顺序是逆序的
 	- 终止处理程序`exit handler` 多次注册则调用多次
 	- 退出码是除以256的余数
-	![atexit](../imgs/APUE/atexit.JPG)
+
+	![atexit](../imgs/progress_env/atexit.JPG) 
 
 	如果将 `exit(258);`替换成`_Exit(260)`，则：
 	- 不会再调用终止处理程序`exit handler` 
-	![_Exit](../imgs/APUE/_Exit.JPG)
+	![_Exit](../imgs/progress_env/_Exit.JPG) 
 
 
 7.  C程序的启动和终止
@@ -142,7 +143,7 @@
 	- 内核执行程序的唯一方法是调用一个`exec`函数
 	- 内核自愿终止的唯一方法是显式或者隐式（通过调用`exit`函数）的调用`_exit`或者`_Exit`
 	
-	![program_start_stop](../imgs/APUE/program_start_stop.JPG)
+	![program_start_stop](../imgs/progress_env/program_start_stop.JPG) 
 
 8. 每个程序都会接收一张环境表。
 	- 与参数表一样，环境表也是一个字符指针数组
@@ -151,7 +152,7 @@
 	- 全局变量`envrion`包含了该指针数组的地址：`extern char **envrion`。我们称`environ`为环境指针，它位于头文件`unistd.h`中
 	- 按照惯例，环境字符串由`name=value`这种格式的字符串组成
 
-	![env_table](../imgs/APUE/env_table.JPG)	
+	![env_table](../imgs/progress_env/env_table.JPG) 	
 
 9. C程序的存储空间布局：C程序一直由下列几部分组成：
 	- 正文段：这是由CPU执行的机器指令部分。
@@ -168,7 +169,7 @@
 	- 堆段：通常在堆中进行动态存储分配。
 		- 由于历史习惯，堆位于未初始化数据段和栈段之间
 
-	![progress_mem](../imgs/APUE/progress_mem.JPG)
+	![progress_mem](../imgs/progress_env/progress_mem.JPG) 
 
 	注意：
 	- 栈从高地址向低地址增长。堆顶和栈顶之间未使用的虚拟地址空间很大
@@ -297,7 +298,7 @@
 
 	```
 
-	![malloc](../imgs/APUE/malloc.JPG)
+	![malloc](../imgs/progress_env/malloc.JPG) 
 
 	可以看到，我们只需要`free`指针`ptr2,ptr4,ptr5`：
 	- `ptr1`：由于`realloc`缩小动态内存区时，并不移动动态内存区，它的值等于`ptr3`
@@ -307,10 +308,10 @@
 	- `ptr5`：当`realloc`第一个参数是`NULL`时，相当于`malloc`，此时分配动态内存区
 
 	下面看一下如果`free(ptr1)`：
-	![malloc_free_err_1](../imgs/APUE/malloc_free_err_1.JPG)
+	![malloc_free_err_1](../imgs/progress_env/malloc_free_err_1.JPG)
 
 	下面看一下如果`free(ptr3)`：
-	![malloc_free_err_2](../imgs/APUE/malloc_free_err_2.JPG)
+	![malloc_free_err_2](../imgs/progress_env/malloc_free_err_2.JPG)
 
 12. 必须用不同的变量保存`realloc`返回的值：
 
@@ -498,7 +499,7 @@
 	}
 	```
 
-	![set_get_env](../imgs/APUE/set_get_env.JPG)
+	![set_get_env](../imgs/progress_env/set_get_env.JPG) 
 
 ## setjmp 和 longjmp
 
@@ -590,7 +591,7 @@
     	return 0;
 	}
 	```
-	![longjump](../imgs/APUE/longjump.JPG)
+	![longjump](../imgs/progress_env/longjump.JPG)
 
 
 ## 进程资源限制
@@ -693,4 +694,4 @@
 	}
 	```
 
-	![getrlimit](../imgs/APUE/getrlimit.JPG)
+	![getrlimit](../imgs/progress_env/getrlimit.JPG) 

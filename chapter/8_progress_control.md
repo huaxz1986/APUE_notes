@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
     return 0;
 }
 	```
-	![ids](../imgs/APUE/progress_id.JPG)
+	![ids](../imgs/progress_control/progress_id.JPG)
 
 4. `fork`函数：创建一个新进程
 
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 		- 如果父进程和子进程写同一个描述符指向的文件，但是又没有任何形式的同步，则它们的输出会相互混合
 			- 如果父进程`fork`之后的任务就是等待子进程完成，而不作任何其他的事情，则父进程和子进程无需对打开的文件描述符做任何处理。因为此时只有子进程处理文件
 			- 如果父进程`fork`之后，父进程与子进程都有自己的任务要处理，则此时父进程和子进程需要各自关闭它们不需要使用的文件描述符，从而避免干扰对方的文件操作
-  	![child_process_file](../imgs/APUE/child_process_file.JPG)
+  	![child_process_file](../imgs/progress_control/child_process_file.JPG)
 	- 除了打开的文件描述符之外，子进程还继承了父进程的下列属性：实际用户`ID`、实际组`ID`、有效用户`ID`、有效组`ID`、附属组`ID`、进程组`ID`、会话`ID`、控制终端、设置用户`ID`标志和设置组`ID`标志、当前工作目录、根目录、文件模式创建屏蔽字、信号屏蔽和信号处理、对任一打开文件描述符的执行时关闭标志、环境、连接的共享存储段、存储映像、资源限制
 	- 父进程和子进程的区别为：
 		- `fork`返回值不同
@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
 }
 	```
 
-  	![fork](../imgs/APUE/fork.JPG)
+  	![fork](../imgs/progress_control/fork.JPG)
 	
 	可以看出：
 	- 子进程和父进程的执行顺序是不确定的
@@ -208,7 +208,7 @@ int main(int argc, char *argv[])
     return 0;
 }
 	```
-  	![vfork](../imgs/APUE/vfork.JPG)
+  	![vfork](../imgs/progress_control/vfork.JPG)
 	
 	可以看出：
 	- 子进程调用`_exit(0)`之前，父进程被阻塞；当子进程调用`_exit(0)`之后，父进程才开始执行
@@ -396,7 +396,7 @@ int main(int argc, char *argv[])
     return 11;
 }
 	```
-  	![wait](../imgs/APUE/wait.JPG)
+  	![wait](../imgs/progress_control/wait.JPG)
 	可以看到：
 	- 子进程的结束顺序跟它们派生的顺序没有什么关系。`wait`只会处理最先结束的子进程
 	- 调用了`_exit`以及正常`return`的子进程，属于正常终止；调用了`abort`的子进程属于异常终止
@@ -492,7 +492,7 @@ int main(int argc, char *argv[])
     return 11;
 }
 	```
-  	![waitpid](../imgs/APUE/waitpid.JPG)
+  	![waitpid](../imgs/progress_control/waitpid.JPG)
 	可以看到：
 	- 通过`waitpid`可以严格控制取得终止子进程状态的顺序
 	- 通过`waitpid`依次等待所有的子进程，可以确保父进程是最后一个结束的
@@ -586,7 +586,7 @@ int main(int argc, char *argv[])
 			- 若程序文件的设置用户 ID 位已设置，则进程的有效用户 ID 变成程序文件所有者的 ID；否则有效用户 ID 不变
 			- 若程序文件的设置组 ID 位已设置，则进程的有效组 ID 变成程序文件所有组的 ID；否则有效组 ID 不变
 	- 在很多UNIX操作系统中，这7个函数只有`execve`是内核的系统调用。另外 6 个只是库函数。它们最终都要调用该系统调用
-	![exec](../imgs/APUE/exec.JPG)
+	![exec](../imgs/progress_control/exec.JPG)
 
 3. 示例：
 
@@ -767,7 +767,7 @@ int main(int argc, char *argv[])
 	- 对解释器可执行文件的识别是由操作系统内核来完成的。该识别步骤是作为`exec`系统调用处理的一部分来完成的
 	- 注意该解释器文件必须要有可执行权限。可以通过`chmod a+x`添加任意用户的可执行权限
 
-	![exec_script](../imgs/APUE/exec_script.JPG)
+	![exec_script](../imgs/progress_control/exec_script.JPG)
 
 7. `system`函数：在程序中执行一个命令字符串
 
@@ -829,7 +829,7 @@ int main(int argc, char *argv[])
 	```
 	注意：调用`system`后不再需要调用`wait`等进程控制原语了。这一切控制由`system`打包
 
-	![system](../imgs/APUE/system.JPG)
+	![system](../imgs/progress_control/system.JPG)
 
 
 ## 更改用户ID和更改组ID
@@ -957,7 +957,7 @@ int main(int argc, char *argv[])
     return 0;
 }
 	```
-	![setuid_seteuid](../imgs/APUE/setuid_seteuid.JPG)	
+	![setuid_seteuid](../imgs/progress_control/setuid_seteuid.JPG)	
 	该例子由父进程派生两个子进程
 	- 第一个子进程测试`setuid`函数，设置为`huaxz1986`的 `id`
 	- 第二个子进程测试`seteuid`函数，设置为`root`的`id`
@@ -1134,7 +1134,7 @@ int main(int argc, char *argv[])
     return num%7;//返回值没有意义。放在这里是为了防止编译器优化过程将循环优化掉
 }
 	```
-	![times](../imgs/APUE/times.JPG)
+	![times](../imgs/progress_control/times.JPG)
 	该示例的父进程派生了两个子进程。第一个子进程睡眠了2秒，第二个子进程睡眠了3秒
 	- 为了便于观察结果，父进程和子进程都进行了百万次的循环累加。如果没有累加，则进程的用户CPU时间为0
 	- 流逝时间转换成了秒
@@ -1250,6 +1250,6 @@ int main(int argc, char *argv[])
     return 0;
 }
 	```
-	![nice](../imgs/APUE/nice.JPG)
+	![nice](../imgs/progress_control/nice.JPG) 
 	该程序必须有超级用户运行，因为普通进程没有权限提升其优先级（即降低`nice`值）
 	

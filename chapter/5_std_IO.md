@@ -48,7 +48,7 @@
 
 	应用程序没必要检验`FILE`对象，只需要将`FILE`指针作为参数传递给每个标准IO函数。
 
-	![FILE](../imgs/APUE/FILE_IO.JPG)
+	![FILE](../imgs/std_IO/FILE_IO.JPG) 
 
 5. 操作系统对每个进程与定义了3个流，并且这3个流可以自动地被进程使用，他们都是定义在`<stdio.h>`中：
 	- 标准输入：预定义的文件指针为`stdin`，它内部的文件描述符就是`STDIN_FILENO`
@@ -290,7 +290,7 @@
     	return 0;
 	}
 	```
-	![FILE_struct](../imgs/APUE/FILE_struct.JPG)
+	![FILE_struct](../imgs/std_IO/FILE_struct.JPG)
 
 	可以看到：
 	- 三个标准IO流的文件描述符依次为 0、1、2
@@ -671,7 +671,7 @@
   	  return 0;
 	}
 	```
-	![FILE_read_write](../imgs/APUE/FILE_read_write.JPG)
+	![FILE_read_write](../imgs/std_IO/FILE_read_write.JPG)
 
 
 11. 有三种方法定位标准IO流
@@ -893,7 +893,7 @@
     	return 0;
 	}
 	```
-	![FILE_seek](../imgs/APUE/FILE_seek.JPG)
+	![FILE_seek](../imgs/std_IO/FILE_seek.JPG)
 
 ## 格式化IO
 
@@ -1144,7 +1144,7 @@
 	}
 
 	```	
-	![print_scan](../imgs/APUE/print_scan.JPG)
+	![print_scan](../imgs/std_IO/print_scan.JPG) 
 
 ## 其他
 
@@ -1291,7 +1291,7 @@
 	}
 	```
 
-	![make_temp_file](../imgs/APUE/make_temp_file.JPG)
+	![make_temp_file](../imgs/std_IO/make_temp_file.JPG) 
 
 5. 内存流：一种标准IO流，虽然它通过 `FILE`指针来访问，但是并没有底层的文件 。所有的IO都是通过在缓冲区和主存之间来回传送字节来完成。
 	> 虽然它看起来像是文件流，但是更适用于字符串操作
@@ -1409,7 +1409,7 @@
 	}
 	```
 
-	![mem_FILE_stream](../imgs/APUE/mem_FILE_stream.JPG)
+	![mem_FILE_stream](../imgs/std_IO/mem_FILE_stream.JPG) 
 
 7. 标准IO库的缺点：效率不高。这与它需要复制的数据量有关。当使用每次一行的函数`fgets/fputs`时，通常需要复制两次数据：
 	- 内核和标准IO缓冲区之间（当调用`read/write`时）

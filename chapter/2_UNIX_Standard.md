@@ -66,4 +66,4 @@
 	- 若`name`参数并不是一个合适的常量，则这三个函数返回-1，并将 `errno`设置为 `EINVAL`
 	- 有些`name`会返回一个不确定的值，这通过返回 -1 来体现，同时不改变`errno`	
 
-  	![limits](../imgs/APUE/limits.JPG)
+  	![limits](../imgs/standard/limits.JPG) 

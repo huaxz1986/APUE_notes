@@ -243,10 +243,10 @@
     	test_file_permission(&stat_buf,"/home/huaxz1986/main.c");
 
     	printf("Test directory file:\n");
-    	stat("/home/huaxz1986/APUE",&stat_buf);
-    	test_file_type(&stat_buf,"/home/huaxz1986/APUE");
-    	test_file_id(&stat_buf,"/home/huaxz1986/APUE");
-    	test_file_permission(&stat_buf,"/home/huaxz1986/APUE");
+    	stat("/home/huaxz1986/file_dir",&stat_buf);
+    	test_file_type(&stat_buf,"/home/huaxz1986/file_dir");
+    	test_file_id(&stat_buf,"/home/huaxz1986/file_dir");
+    	test_file_permission(&stat_buf,"/home/huaxz1986/file_dir");
 
    	 printf("Test block file:\n");
    	 stat("/dev/loop0",&stat_buf);
@@ -283,7 +283,7 @@
 	}
 	```
 
-  	![stat](../imgs/APUE/stat.JPG)
+  	![stat](../imgs/file_dir/stat.JPG) 
 
 ## 二、访问测试和文件模式创建屏蔽字
 
@@ -414,7 +414,7 @@
    	 printf("Test access: no write:\n");
    	 test_access("/etc/shadow",W_OK);
 	printf("Test access: write ok:\n");
-   	test_access("/home/huaxz1986/APUE",W_OK);
+   	test_access("/home/huaxz1986/file_dir",W_OK);
    	 printf("\n\n\n");
    	 printf("Current creat file:\n");
    	 test_file_mode(S_IRWXU|S_IRWXG|S_IRWXO,"test1");
@@ -425,7 +425,7 @@
    	return 0;
 	}
 	```
-  	![access_umask](../imgs/APUE/access_umask.JPG)
+  	![access_umask](../imgs/file_dir/access_umask.JPG) 
 
 	可以看到：
 	- `access`函数：对于不存在的文件名访问失败；对没有写权限的名字写访问失败
@@ -596,7 +596,7 @@
 
 	```
 
-  	![chmod_chown](../imgs/APUE/chmod_chown.JPG)
+  	![chmod_chown](../imgs/file_dir/chmod_chown.JPG) 
 
 	可以看到：
 	- 修改文件所属的用户和组，需要超级用户权限。普通用户无法修改，即使该用户就是该文件的所有者也不行
@@ -727,7 +727,7 @@
 
 	```
 
-  	![truncate](../imgs/APUE/truncate.JPG)
+  	![truncate](../imgs/file_dir/truncate.JPG) 
 
 	可以看到：
 	- 对于文件空洞，它不占用任何磁盘空间；空洞部分读出的内容全为0
@@ -924,7 +924,7 @@
     		return 0;
 	}
 	```
-	  ![link_unlink](../imgs/APUE/link_unlink.JPG)
+	  ![link_unlink](../imgs/file_dir/link_unlink.JPG) 
 
 	可以看到：
 	- `test`和`new_test`这两个文件共享一个 i 结点。因此该节点的 硬链接数为2
@@ -1125,7 +1125,7 @@
 
 	```
 
-	  ![symlink](../imgs/APUE/symlink.JPG)
+	  ![symlink](../imgs/file_dir/symlink.JPG) 
 
 	可以看到：
 	- 符号链接文件的内容就是它链接到的那个文件的绝对路径名，其中路径名字符序列不包含 `null`字节
@@ -1279,7 +1279,7 @@
 	}
 	```
 
-	  ![utimes](../imgs/APUE/utimes.JPG)	
+	  ![utimes](../imgs/file_dir/utimes.JPG) 	
 	可以看到：
 	- `st_ctim`是由系统自动维护的，程序员无法手动指定
 
@@ -1462,4 +1462,4 @@
 	}
 	```
 
-	  ![dir_function](../imgs/APUE/dir_function.JPG)
+	  ![dir_function](../imgs/file_dir/dir_function.JPG) 

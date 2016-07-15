@@ -125,7 +125,7 @@
 	- `char **gr_mem`：指向各用户名指针的数组
 		> 它是一个指针数组，其中每个指针指向一个属于该组的用户名。该数组以`null`指针结尾
 
-  	![struct_group](../imgs/APUE/struct_group.JPG)
+  	![struct_group](../imgs/system_info/struct_group.JPG) 
 
 7. `getgrgid/getgrnam`函数：查看组文件：
 
@@ -466,7 +466,7 @@
     	return 0;
 	}
 	```
-  	![read_system_file](../imgs/APUE/read_system_file.JPG)
+  	![read_system_file](../imgs/system_info/read_system_file.JPG) 
 	
 
 ## 时间和日期
@@ -873,4 +873,4 @@
 
 	```
 
-  	![time](../imgs/APUE/time.JPG)
+  	![time](../imgs/system_info/time.JPG)  

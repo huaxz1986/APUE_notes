@@ -30,7 +30,7 @@
 		- 一开始提供的就是图形终端
 	- `Linux`：步骤几乎与`Free BSD`相同。但是`init`读取的是`/etc/inittab`文件而不是`/etc/ttys`文件
 
-	![login](../imgs/APUE/login.JPG)
+	![login](../imgs/progress_relations/login.JPG) 
 
 2. 网络登录：对于网络登录，所有登录都是经由内核的网络接口驱动程序。
 	- 在`BSD`系统中，由`init`执行`shell`脚本`/etc/rc`，此`shell`脚本启动`inetd`守护进程。由`inetd`负责处理网络登录
@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
     return 0;
 }
 	```
-	![get_process_group_id](../imgs/APUE/get_process_group_id.JPG)
+	![get_process_group_id](../imgs/progress_relations/get_process_group_id.JPG)
 
 4. `setpgid`函数：加入一个现有的进程组或者创建一个新进程组
 
@@ -176,7 +176,7 @@ int main(int argc, char *argv[])
     return 0;
 }
 	```
-  	![setpgid](../imgs/APUE/setpgid.JPG)
+  	![setpgid](../imgs/progress_relations/setpgid.JPG)
 
 ## 会话
 
@@ -290,7 +290,7 @@ int main(int argc, char *argv[])
     return 0;
 }
 	```
-  	![session_id](../imgs/APUE/session_id.JPG)
+  	![session_id](../imgs/progress_relations/session_id.JPG)
 	可以看到：
 	- `init`进程：进程ID等于该进程组的组ID等于所在会话的会话ID
 	- 本进程`A`位于父进程`P`创建的会话中，会话ID等于父进程的进程ID也等于进程组的ID
@@ -448,7 +448,7 @@ int main(int argc, char *argv[])
     return 0;
 }
 	```
-  	![control_terminal](../imgs/APUE/control_terminal.JPG)
+  	![control_terminal](../imgs/progress_relations/control_terminal.JPG) 
 	可以看到：
 	- 在父进程中：
 		- 父进程进程`ID`为 3193 ，进程组ID为 3193， 会话ID为 3192

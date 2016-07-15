@@ -73,7 +73,7 @@
 		- 输入：附加的出错消息
 		- 输出：无输出。但是向标准错误上输出一条出错消息，这条出错消息如上所述。
 
-  	![errno handle](../imgs/APUE/errno.JPG)
+  	![errno handle](../imgs/introduction/errno.JPG) 
 
 3. 出错恢复：可以将`<errno.h>`中定义的错误分成两类：
 	- 致命性错误：此类错误无法恢复。最多只能在屏幕上打印一条出错消息或者将出错消息写入日志，然后退出。
@@ -99,4 +99,4 @@
 
 3. 运行 `shell` 命令 `time` 可以获取进程的时钟时间、用户时间和系统时间。`time`的参数请参考 `man`手册
 
-  ![time_command](../imgs/APUE/time_command.JPG)
+  ![time_command](../imgs/introduction/time_command.JPG) 

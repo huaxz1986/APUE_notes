@@ -241,7 +241,7 @@ int main(void)
     return 0;
 }
 	```
-	![kill_raise](../imgs/APUE/kill_raise.JPG)
+	![kill_raise](../imgs/signal/kill_raise.JPG)
 
 	可以看到：
 	- 父进程注册的信号处理程序，在`fork`之后的子进程中还有效
@@ -325,8 +325,8 @@ int main(void)
 }
 
 	```
-	![alarm](../imgs/APUE/alarm.JPG)
-
+	![alarm](../imgs/signal/alarm.JPG)
+ 
 	可以看到：
 	- 以`seconds=0`调用`alarm`会取消当前的定时器，此时并不会调用信号处理程序。
 	- 一旦进程终止，所有的定时器都无效。因为进程终止时释放了所有的资源，包括定时器。
@@ -395,7 +395,7 @@ int main(void)
     return 0;
 }
 	```
-	![pause](../imgs/APUE/pause.JPG)
+	![pause](../imgs/signal/pause.JPG)
 
 	可以看到：
 	- 父进程向进程组发送了`SIGINT`信号后，父进程和子进程的信号处理程序分别执行完毕，然后子进程中`pause`中返回，返回值一定是 -1。
@@ -528,7 +528,7 @@ int main(void)
     return 0;
 }
 	```
-	![sigprocmask](../imgs/APUE/sigprocmask.JPG)
+	![sigprocmask](../imgs/signal/sigprocmask.JPG)
 	
 	这里用到了一个技巧：`sigprocmask(SIG_SETMASK,new_set,&old_set)`之后，如果想检验进程的当前屏蔽字，那么使用同样的`set`再调用一次`sigprocmask`，则`old_set`中返回的就是当前的信号屏蔽字
 	> 前提是两次调用都成功，否则这就是个`BUG`
@@ -626,7 +626,7 @@ int main(void)
     return 0;
 }
 	```
-	![sigpending](../imgs/APUE/sigpending.JPG)
+	![sigpending](../imgs/signal/sigpending.JPG)
 
 13. `sigaction`函数：检查或者修改指定信号相关联的处理动作。它取代了UNIX早期使用的`signal`函数
 
@@ -831,7 +831,7 @@ int main(void)
     return 0;
 }
 	```
-	![sigaction](../imgs/APUE/sigaction.JPG)
+	![sigaction](../imgs/signal/sigaction.JPG)
 	
 	进程的信号屏蔽字被设置为`SIGPIPE`，信号处理程序的`sa_mask`被设置为`SIGALRM`。可以看到
 	- 进程的信号屏蔽字始终是`SIGPIPE`
@@ -972,12 +972,12 @@ int main(void)
     return 0;
 }
 	```
-	![siglongjmp](../imgs/APUE/siglongjmp.JPG)
+	![siglongjmp](../imgs/signal/siglongjmp.JPG)
 
 	这里`sigsetjmp(sigjmp_buf env,int savemask)`的`savemask`参数为零，表示不恢复进程的信号屏蔽字。因此可以看到从`SIGINT`的信号处理函数跳转出来后，进程的信号屏蔽字添加了`SIGINT`；从`SIGALRM`的信号处理函数跳转出来后，进程的信号屏蔽字添加了`SIGALRM`。
 
 	如果`savemask`参数为1，则运行结果如下，可见从信号处理函数跳转出来后，进程的信号屏蔽字恢复了：
-	![siglongjmp_1](../imgs/APUE/siglongjmp_1.JPG)
+	![siglongjmp_1](../imgs/signal/siglongjmp_1.JPG)
 
 
 17. `sigsuspend`函数：用于原子性的修改信号屏蔽字然后进程睡眠
@@ -1050,7 +1050,7 @@ int main(void)
     return 0;
 }
 	```
-	![sigsuspend](../imgs/APUE/sigsuspend.JPG)
+	![sigsuspend](../imgs/signal/sigsuspend.JPG)
 
 	父进程调用`sigsuspend`将自己投入睡眠并设置进程信号屏蔽字为`SIGINT`，然后子进程依次向父进程发送了`SIGAINT`与`SIGALRM`信号。
 	- 父进程收到`SIGINT`时，因为此时进程信号屏蔽字是`SIGINT`，则`SIGINT`被阻塞，该信号是未决的
@@ -1123,7 +1123,7 @@ int main(void)
 }
 	```
 
-	![abort](../imgs/APUE/abort.JPG)
+	![abort](../imgs/signal/abort.JPG)
 	
 	可见在父进程中，虽然设置了进程的信号屏蔽字，但是父进程仍然递送`SIGABRT`信号。
 
@@ -1260,7 +1260,7 @@ int main(void)
     return 0;
 }
 	```
-	![sleep](../imgs/APUE/sleep.JPG)
+	![sleep](../imgs/signal/sleep.JPG)
 
 	可见在`sleep`过程中根本没有发送`SIGALRM`信号。因此也就没有使用定时器的实现方式。
 

@@ -160,7 +160,7 @@
  	   return 0;
 	}
 	```
-  	![open_creat](../imgs/APUE/open_creat.JPG)
+  	![open_creat](../imgs/file_IO/open_creat.JPG) 
 
 	可以看到：
 
@@ -340,7 +340,7 @@
  	   return 0;
 	}
 	```
- 	 ![lseek_read_write](../imgs/APUE/lseek_read_write.JPG)
+ 	 ![lseek_read_write](../imgs/file_IO/lseek_read_write.JPG) 
 
 	测试序列为：
 	- 开始文件为空，所以读取20个字节的`read`只读取0
@@ -373,9 +373,12 @@
 
 	这些信息都是在打开文件时从磁盘读入内存的。如 i 结点包含了文件的所有者、文件长度、指向文件实际数据在磁盘上所在位置的指针等等。 v 结点结构和 i 结点结构实际上代表了文件的实体。
 
- 	 ![file_descriptor](../imgs/APUE/file_descriptor.JPG)
+ 	 ![file_descriptor](../imgs/file_IO/file_descriptor.JPG) 
 
-	现在假设进程 A 打开文件 `file1`，返回文件描述符 3；进程 B 也打开文件 `file2`，返回文件描述符 4：
+	现在假设进程 A 打开文件 `file1`，返回文件描述符 3；进程 B 也打开文件 `file2`，返回文件描述符 2：
+
+	![file_descriptor_process](../imgs/file_IO/file_descriptor_process.JPG)
+
 	- 内核在文件表上新增两个表项：
 		- 这两个文件表项指向同一个 v 结点表项
 		- 进程 A 、B 各自的文件描述符表项分别指向这两个文件表项；
@@ -387,8 +390,12 @@
 		- 若进程 B 用 `lseek` 定位到文件当前的尾端，则进程 B 对应的文件表项的当前文件偏移量设置为 i 结点中的当前长度
 		- `lseek` 函数只是修改文件表项中的当前文件偏移量，不进行任何 I/O 操作
 	
-	可能一个进程中有多个文件描述符指向同一个文件表项。
+	
+ 	
 
+	可能一个进程中有多个文件描述符指向同一个文件表项。
+  	![dup_file_descriptor](../imgs/file_IO/dup_file_descriptor.JPG) 
+ 
 
 2. 原子操作：
 	- 追加一个文件时，不能通过`lseek`到末尾然后`write`。要用`O_APPEND`选项打开文件，然后直接`write`。
@@ -416,7 +423,7 @@
 
 	调用`pread`相当于先调用`lseek`再调用`read`.但是调用`pread`时，无法中断其定位和读操作，并且不更新当前文件偏移量；调用`pwrite`相当于先调用`lseek`再调用`write`.但是调用`pwrite`时，无法中断其定位和写操作，并且不更新当前文件偏移量
 
- 	 ![pread_pwrite](../imgs/APUE/pread_pwrite.JPG)
+ 	 ![pread_pwrite](../imgs/file_IO/pread_pwrite.JPG) 
 
 4. `dup/dup2`：复制一个现有的文件描述符：
 
@@ -433,13 +440,15 @@
 		- 成功： 返回新的文件描述符
 		- 失败： 返回 -1
 
+  	![dup_file_descriptor](../imgs/file_IO/dup_file_descriptor.JPG)
+
 	对于`dup`函数，返回的新的文件描述符一定是当前可用的文件描述符中最小的数字。对于`dup2`函数：
 	- 如果 `fd2`已经是被打开的文件描述符且不等于`fd`，则先将其关闭，然后再打开（<font color='red'>注意关闭再打开是一个原子操作</font>）
 	- 如果 `fd2`等于`fd`，则直接返回`fd2`（也等于`fd`），而不作任何操作
 
 	任何情况下，这个返回的新的文明描述符与参数`fd`共享同一个文件表项（因此文件状态标志以及文件偏移量都会共享）。	任何情况下，这个返回的新的文明描述符的`close-on-exec`标志总是被清除
 
-  	![dup_dup2](../imgs/APUE/dup_dup2.JPG)
+  	![dup_dup2](../imgs/file_IO/dup_dup2.JPG) 
 
 5. UNIX操作系统在内核中设有缓冲区，大多数磁盘 I/O 都通过缓冲区进行。当我们想文件写入数据时，内核通常都首先将数据复制到缓冲区中，然后排入队列，晚些时候再写入磁盘。这种方式称为延迟写。
 	- 当内核需要重用缓冲区来存方其他数据时，它会把所有延迟写的数据库写入磁盘
@@ -625,7 +634,7 @@
 	}
 	```
 
- 	 ![fcntl](../imgs/APUE/fcntl.JPG)
+ 	 ![fcntl](../imgs/file_IO/fcntl.JPG) 
 
 	注意：
 	- Linux 下，不支持文件状态标志： `F_EXEC与`， `F_SEARCH`
@@ -637,4 +646,4 @@
 	- 大多数系统忽略`mod`参数
 	- 在 Linux 操作系统上， `/dev/fd/0`是个例外，它是个底层物理文件的符号链接。因此在它上面调用`creat` 会导致底层文件被截断
 
-  	![dev_fd](../imgs/APUE/dev_fd.JPG)
+  	![dev_fd](../imgs/file_IO/dev_fd.JPG) 
