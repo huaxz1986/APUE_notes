@@ -161,84 +161,20 @@
 		- 但是注意：`UNIX`系统每经过一定时间会重新使用销毁的进程的进程ID，所以可能存在某个给定进程ID的进程并不是你所期望的那个进程
 	- 如果调用`kill`为本进程产生信号，而且此信号是不被阻塞的，那么可以确保在`kill`返回之前，任何其他未决的、非阻塞信号（包括`signo`信号）都被递送到本进程。
 
-3. 示例
+3. 示例：在`main`函数中调用`test_kill_raise`函数
 
 	```
-#include <stdio.h>
-#include<errno.h>
-#include<string.h>
-#include<signal.h>
-#include<unistd.h>
-void sig_print(int signo,siginfo_t *info, void *context)
+void test_kill_raise()
 {
-    printf("SIGNAL_HANDLER:signal %s is caught, signo is %d\n",strsignal(signo),signo);
-}
-void add_sigaction(int signo)
-{
-    struct sigaction action;
-    action.sa_sigaction=sig_print;
-    action.sa_flags=SA_SIGINFO;
-    if(sigaction(signo,&action,NULL)==-1)
-    {
-        printf("set sigaction for signal %s failed!,because %s\n",
-			strsignal(signo),strerror(errno));
-    }else
-    {
-        printf("set sigaction for signal %s successed\n",strsignal(signo));
-    }
-}
-void test_kill(pid_t pid,int signo)
-{
-    if(kill(pid,signo)==-1)
-    {
-        printf("\tsend signal %s for process %d failed,because %s\n",
-               strsignal(signo),pid,strerror(errno));
-    }else
-    {
-        printf("\tsend signal %s for process %d succeed\n",strsignal(signo),pid);
-    }
-}
-void test_raise(int signo)
-{
-    if(raise(signo)==-1)
-    {
-        printf("\tsend signal %s failed,because %s\n",
-               strsignal(signo),strerror(errno));
-    }else
-    {
-        printf("\traise signal %s succeed\n",strsignal(signo));
-    }
-}
-void child()
-{
-    add_sigaction(SIGCHLD);
-    add_sigaction(SIGINT);
-    pid_t id;
-    id=vfork();
-    if(id==0)
-    {// child
-
-     printf("------Begin child------\n");
-     printf("Kill process 1 with SIGINT\n");
-     test_kill(1,SIGINT);
-     printf("Kill process 1 with empty signal\n");
-     test_kill(1,0);
-     printf("Kill parent with empty signal\n");
-     test_kill(getppid(),0);
-     printf("Kill group with SIGINT\n");
-     test_kill(0,SIGINT);
-     printf("Self raise SIGINT\n");
-     test_raise(SIGINT);
-     printf("--------End child-------\n");
-     _exit(0);
-    }
-}
-int main(void)
-{
-    child();
-    sleep(1);
-    sleep(1);
-    return 0;
+    M_TRACE("---------  Begin test_kill_raise()  ---------\n");
+    add_sigaction(SIGCHLD,NULL,0,0,sig_print);
+    add_sigaction(SIGINT,NULL,0,0,sig_print);
+    create_child();
+    // 只有父进程能到达此处
+    check_waitpid_signal();
+    print_pid();
+    print_parent_pid();
+    M_TRACE("---------  End test_kill_raise()  ---------\n\n");
 }
 	```
 	![kill_raise](../imgs/signal/kill_raise.JPG)
@@ -248,7 +184,7 @@ int main(void)
 	- 子进程没有权限向进程`pid`为 1 的`init`进程发送任何信号（哪怕是空信号）
 	- 子进程向本进程组发送的`SIGINT`信号（`kill`的`pid`为 0）同时被子进程和父进程捕捉到了
 	- 子进程向自己`raise`的`SIGINT`信号被自己捕捉到了
-	- 子进程终止时，自动向父进程发送的`SIGCHLD`信号被父进程捕捉到了（为了让父进程不会提前终止，这里给了两个`sleep`操作）
+	- 子进程终止时，自动向父进程发送的`SIGCHLD`信号被父进程捕捉到了
 
 4. `alarm`函数：为进程设置定时器
 
@@ -269,61 +205,23 @@ int main(void)
 	- 如果`seconds=0`，则取消旧定时器，此时并没有新设定一个定时器，进程不再拥有任何定时器。
 	- 如果以`seconds>0`，则取消旧定时器，并设定新定时器（超时时间为`seconds`秒）
 
-5. 示例
+5. 示例：在`main`函数中调用`test_alarm`函数
 
 	```
-#include <stdio.h>
-#include<errno.h>
-#include<string.h>
-#include<signal.h>
-#include<unistd.h>
-void sig_print(int signo,siginfo_t *info, void *context)
+void test_alarm()
 {
-    printf("SIGNAL_HANDLER:signal %s is caught, signo is %d\n",strsignal(signo),signo);
-}
-void add_sigaction(int signo)
-{
-    struct sigaction action;
-    action.sa_sigaction=sig_print;
-    action.sa_flags=SA_SIGINFO;
-    if(sigaction(signo,&action,NULL)==-1)
-    {
-        printf("set sigaction for signal %s failed!,because %s\n",
-			strsignal(signo),strerror(errno));
-    }else
-    {
-        printf("set sigaction for signal %s successed\n",strsignal(signo));
-    }
-}
-void test_alarm(unsigned int seconds)
-{
-    unsigned int remain=alarm(seconds);
-    if(remain !=0)
-    {
-        printf("\tAn alarm already,its remain seconds is %d s\n",remain);
-    }else
-    {
-        printf("\tThe only alarm is set ok\n");
-    }
-}
-int main(void)
-{
-    add_sigaction(SIGALRM);
-    printf("Set a new Alarm\n");
-    test_alarm(2);// alarm after 2s
-    sleep(3);//sleep 3s
-    printf("Set a new Alarm\n");
-    test_alarm(3);
+    M_TRACE("---------  Begin test_alarm()  ---------\n");
+    add_sigaction(SIGALRM,NULL,0,0,sig_print);
+    My_alarm(2) ; // 2s 定时器
+    sleep(3);
+    My_alarm(3); //3s 定时器
     sleep(1);
-    printf("Cancel the only Alarm\n");
-    test_alarm(0); // cancel a alarm
-    printf("Set a new  Alarm\n");
-    test_alarm(4);
-    printf("Set another  Alarm\n");
-    test_alarm(2); // the second alarm
-    return 0;
+    My_alarm(0);// 取消定时器
+    sleep(3);
+    My_alarm(4); //4s 定时器
+    My_alarm(2); //2s 定时器
+    M_TRACE("---------  End test_alarm()  ---------\n\n");
 }
-
 	```
 	![alarm](../imgs/signal/alarm.JPG)
  
@@ -342,69 +240,27 @@ int main(void)
 	只有执行了一个信号处理程序并且从其返回时，`pause`才返回。这种情况下`pause`返回 -1，	`errno`设置为`EINTR`	
 	- 如果我们仅仅是想从`pause`返回，则信号处理程序可以什么都不做（函数体为空）
 
-7. 示例：
+7. 示例：在`main`函数中调用`test_pause`函数
 
 	```
-#include <stdio.h>
-#include<errno.h>
-#include<string.h>
-#include<signal.h>
-#include<unistd.h>
-void sig_print(int signo,siginfo_t *info, void *context)
-{
-    printf("SIGNAL_HANDLER:signal %s is caught, signo is %d\n",
-                strsignal(signo),signo);
-}
-void add_sigaction(int signo)
-{
-    struct sigaction action;
-    action.sa_sigaction=sig_print;
-    action.sa_flags=SA_SIGINFO;
-    if(sigaction(signo,&action,NULL)==-1)
-    {
-        printf("set sigaction for signal %s failed!,because %s\n",
-                    strsignal(signo),strerror(errno));
-    }else
-    {
-        printf("set sigaction for signal %s successed\n",strsignal(signo));
-    }
-}
 void test_pause()
 {
-    int result=pause();
-    printf("return from pause, the return value is %d\n",result);
-}
-void child()
-{
-    add_sigaction(SIGINT);
-    pid_t id;
-    id=fork();
-    if(id==0)
-    {//child;
-        test_pause();
-        _exit(0);
-    }else
-    {
-        sleep(2);
-        kill(0,SIGINT);
-    }
-}
-int main(void)
-{
-    child();
-    return 0;
+    M_TRACE("---------  Begin test_alarm()  ---------\n");
+    add_sigaction(SIGALRM,NULL,0,0,sig_print);
+    My_alarm(2) ; // 2s 定时器
+    My_pause();
+    M_TRACE("---------  End test_alarm()  ---------\n\n");
 }
 	```
 	![pause](../imgs/signal/pause.JPG)
 
-	可以看到：
-	- 父进程向进程组发送了`SIGINT`信号后，父进程和子进程的信号处理程序分别执行完毕，然后子进程中`pause`中返回，返回值一定是 -1。
+	可以看到：`pause`返回值一定是 -1。
 
 
 8. 操作信号集的函数：
 
 	```
-	#include<singal.h>
+	#include<signal.h>
 	int sigemptyset(sigset_t *set); 
 	int sigfillset(sigset_t *set);
 	int sigaddset(sigset_t *set,int signo);
@@ -423,7 +279,7 @@ int main(void)
 9. `sigprocmask`函数：检查、更改、或者同时检测更改进程的信号屏蔽字
 
 	```
-	#include<singal.h>
+	#include<signal.h>
 	int sigprocmask(int how,const sigset_t *restrict set,sigset_t *restrict oset);
 	```
 	- 参数：
@@ -436,7 +292,7 @@ int main(void)
 
 	如果`set`是非空指针，则它结合`how`一起指示了如何修改当前信号屏蔽字
 	- `how=SIG_BLOCK`：该进程新的信号屏蔽字是其当前信号屏蔽字和`set`指向的信号集的并集。即`set`包含了希望阻塞的信号
-	-  `how=SIG_UBBLOCK`：该进程新的信号屏蔽字是其当前信号屏蔽字和`set`指向的信号集补集的并集。即`set`包含了希望解除阻塞的附加信号
+	-  `how=SIG_UNBLOCK`：该进程新的信号屏蔽字是其当前信号屏蔽字和`set`指向的信号集补集的并集。即`set`包含了希望解除阻塞的附加信号
 	- `how=SIG_SETMASK`：该进程新的信号屏蔽字是`set`指向的值
 
 	如果`set`是空指针，则不改变进程的信号屏蔽字，`how`的值没有任何意义
@@ -444,99 +300,44 @@ int main(void)
 
 	如果调用`sigprocmask`之前，进程有未决的某个信号；调用`sigprocmask`之后，解除了对该信号的屏蔽，则在`sigprocmask`返回之前，该信号的信号处理程序就被调用（而不是等到`sigprocmask`返回之后）
 
-10. 示例：
+10. 示例：在`main`函数中调用`test_sigprocmask_sigset`函数
 
 	```
-#include <stdio.h>
-#include<unistd.h>
-#include<signal.h>
-#include<errno.h>
-#include<string.h>
-void print_sigset(sigset_t *set)
+void test_sigprocmask_sigset()
 {
-    printf("set is:\t");
-    if(set==NULL)
-    {
-        printf("NULL\n");
-        return ;
-    }
-    if(sigismember(set,SIGABRT)) printf("SIGABRT\t");
-    if(sigismember(set,SIGALRM)) printf("SIGALRM\t");
-    if(sigismember(set,SIGBUS)) printf("SIGBUS\t");
-    if(sigismember(set,SIGCHLD)) printf("SIGCHLD\t");
-    if(sigismember(set,SIGCONT)) printf("SIGCONT\t");
-    if(sigismember(set,SIGFPE)) printf("SIGFPE\t");
-    if(sigismember(set,SIGHUP)) printf("SIGHUP\t");
-    if(sigismember(set,SIGILL)) printf("SIGILL\t");
-    if(sigismember(set,SIGINT)) printf("SIGINT\t");
-    if(sigismember(set,SIGIO)) printf("SIGIO\t");
-    if(sigismember(set,SIGIOT)) printf("SIGIOT\t");
-    if(sigismember(set,SIGKILL)) printf("SIGKILL\t");
-    if(sigismember(set,SIGPIPE)) printf("SIGPIPE\t");
-    if(sigismember(set,SIGPOLL)) printf("SIGPOLL\t");
-    if(sigismember(set,SIGPROF)) printf("SIGPROF\t");
-    if(sigismember(set,SIGPWR)) printf("SIGPWR\t");
-    if(sigismember(set,SIGQUIT)) printf("SIGQUIT\t");
-    if(sigismember(set,SIGSEGV)) printf("SIGSEGV\t");
-    if(sigismember(set,SIGSTKFLT)) printf("SIGSTKFLT\t");
-    if(sigismember(set,SIGSTOP)) printf("SIGSTOP\t");
-    if(sigismember(set,SIGSYS)) printf("SIGSYS\t");
-    if(sigismember(set,SIGTERM)) printf("SIGTERM\t");
-    if(sigismember(set,SIGTRAP)) printf("SIGTRAP\t");
-    if(sigismember(set,SIGTSTP)) printf("SIGTSTP\t");
-    if(sigismember(set,SIGTTIN)) printf("SIGTTIN\t");
-    if(sigismember(set,SIGTTOU)) printf("SIGTTOU\t");
-    if(sigismember(set,SIGURG)) printf("SIGURG\t");
-    if(sigismember(set,SIGUSR1)) printf("SIGUSR1\t");
-    if(sigismember(set,SIGUSR2)) printf("SIGUSR2\t");
-    if(sigismember(set,SIGVTALRM)) printf("SIGVTALRM\t");
-    if(sigismember(set,SIGWINCH)) printf("SIGWINCH\t");
-    if(sigismember(set,SIGXCPU)) printf("SIGXCPU\t");
-    if(sigismember(set,SIGXFSZ)) printf("SIGXFSZ\t");
-    printf("\n");
-}
-void test_sigprocmask(const sigset_t* new_set)
-{
-    sigset_t old_set;
-    if(sigprocmask(SIG_SETMASK,new_set,&old_set)==-1)
-    {
-        printf("\tsigprocmask set new set failed,because %s\n",
-                    strerror(errno));
-    }else
-    {
-        printf("\tsigprocmask set new set ok,the old set ->");
-        print_sigset(&old_set);
-    }
-}
-int main(void)
-{
+    M_TRACE("---------  Begin test_sigprocmask_sigset()  ---------\n");
     sigset_t set;
-    sigemptyset(&set);
-    printf("Will set sigset to emtpy\n");
-    test_sigprocmask(&set);
-    printf("Will set sigset:SIGINT\n");
-    sigaddset(&set,SIGINT);
-    test_sigprocmask(&set);
-    printf("Will set sigset:SIGINT+SIGALRM\n");
-    sigaddset(&set,SIGALRM);
-    test_sigprocmask(&set);
-    printf("Will set sigset:SIGALRM\n");
-    sigdelset(&set,SIGINT);
-    test_sigprocmask(&set);
-    printf("The final sigset :\n");
-    test_sigprocmask(&set);
-    return 0;
+    //********** 测试操作 sigset **********//
+    printf("********** sigset operation ***********\n");
+    My_sigemptyset(&set);
+    print_sigset(&set); // 打印信号集
+    My_sigaddset(&set,SIGINT);
+    print_sigset(&set); // 打印信号集
+    My_sigfillset(&set);
+    print_sigset(&set); // 打印信号集
+    My_sigdelset(&set,SIGINT);
+    print_sigset(&set); // 打印信号集
+    My_sigismember(&set,SIGINT);
+    My_sigismember(&set,SIGCHLD);
+    //********** 测试 sigprocmask **********//
+    printf("\n\n********** sigprocmask operation ***********\n");
+    print_progress_mask_sigset();// 打印进程的信号屏蔽字
+    My_sigprocmask(SIG_BLOCK,&set,NULL);
+    print_progress_mask_sigset();// 打印进程的信号屏蔽字
+    My_sigprocmask(SIG_UNBLOCK,&set,NULL);
+    print_progress_mask_sigset();// 打印进程的信号屏蔽字
+    My_sigprocmask(SIG_SETMASK,&set,NULL);
+    print_progress_mask_sigset();// 打印进程的信号屏蔽字
+    M_TRACE("---------  End test_sigprocmask_sigset()  ---------\n\n");
 }
 	```
-	![sigprocmask](../imgs/signal/sigprocmask.JPG)
+	![sigprocmask](../imgs/signal/sigprocmask.JPG)	
 	
-	这里用到了一个技巧：`sigprocmask(SIG_SETMASK,new_set,&old_set)`之后，如果想检验进程的当前屏蔽字，那么使用同样的`set`再调用一次`sigprocmask`，则`old_set`中返回的就是当前的信号屏蔽字
-	> 前提是两次调用都成功，否则这就是个`BUG`
 
 11. `sigpending`函数：返回当前进程的被阻塞而且未决的信号的集合
 
 	```
-	#include<singal.h>
+	#include<signal.h>
 	int sigpending(sigset_t *set);
 	```
 	- 参数：
@@ -547,83 +348,40 @@ int main(void)
 
 	对于调用进程而言，如果某个信号是被阻塞的，那么它一定无法递送，则该信号当前一定也是未决的。
 
-12. 示例：
+12. 示例：在`main`函数中调用`test_sigpending`函数
 
 	```
-#include <stdio.h>
-#include<unistd.h>
-#include<signal.h>
-#include<errno.h>
-#include<string.h>
-void print_sigset(sigset_t *set)
-{
-    printf("set is:\t");
-    if(set==NULL)
-    {
-        printf("NULL\n");
-        return ;
-    }
-    if(sigismember(set,SIGABRT)) printf("SIGABRT\t");
-    if(sigismember(set,SIGALRM)) printf("SIGALRM\t");
-    if(sigismember(set,SIGBUS)) printf("SIGBUS\t");
-    if(sigismember(set,SIGCHLD)) printf("SIGCHLD\t");
-    if(sigismember(set,SIGCONT)) printf("SIGCONT\t");
-    if(sigismember(set,SIGFPE)) printf("SIGFPE\t");
-    if(sigismember(set,SIGHUP)) printf("SIGHUP\t");
-    if(sigismember(set,SIGILL)) printf("SIGILL\t");
-    if(sigismember(set,SIGINT)) printf("SIGINT\t");
-    if(sigismember(set,SIGIO)) printf("SIGIO\t");
-    if(sigismember(set,SIGIOT)) printf("SIGIOT\t");
-    if(sigismember(set,SIGKILL)) printf("SIGKILL\t");
-    if(sigismember(set,SIGPIPE)) printf("SIGPIPE\t");
-    if(sigismember(set,SIGPOLL)) printf("SIGPOLL\t");
-    if(sigismember(set,SIGPROF)) printf("SIGPROF\t");
-    if(sigismember(set,SIGPWR)) printf("SIGPWR\t");
-    if(sigismember(set,SIGQUIT)) printf("SIGQUIT\t");
-    if(sigismember(set,SIGSEGV)) printf("SIGSEGV\t");
-    if(sigismember(set,SIGSTKFLT)) printf("SIGSTKFLT\t");
-    if(sigismember(set,SIGSTOP)) printf("SIGSTOP\t");
-    if(sigismember(set,SIGSYS)) printf("SIGSYS\t");
-    if(sigismember(set,SIGTERM)) printf("SIGTERM\t");
-    if(sigismember(set,SIGTRAP)) printf("SIGTRAP\t");
-    if(sigismember(set,SIGTSTP)) printf("SIGTSTP\t");
-    if(sigismember(set,SIGTTIN)) printf("SIGTTIN\t");
-    if(sigismember(set,SIGTTOU)) printf("SIGTTOU\t");
-    if(sigismember(set,SIGURG)) printf("SIGURG\t");
-    if(sigismember(set,SIGUSR1)) printf("SIGUSR1\t");
-    if(sigismember(set,SIGUSR2)) printf("SIGUSR2\t");
-    if(sigismember(set,SIGVTALRM)) printf("SIGVTALRM\t");
-    if(sigismember(set,SIGWINCH)) printf("SIGWINCH\t");
-    if(sigismember(set,SIGXCPU)) printf("SIGXCPU\t");
-    if(sigismember(set,SIGXFSZ)) printf("SIGXFSZ\t");
-    printf("\n");
-}
 void test_sigpending()
 {
-    sigset_t set;
-    if (sigpending(&set)==-1)
-    {
-        printf("sigpending error,because %s \n",strerror(errno));
-    }else
-    {
-        printf("The pending signal is :\t");
-        print_sigset(&set);
-    }
-}
-int main(void)
-{
-    sigset_t set;
-    sigemptyset(&set);
-    sigaddset(&set,SIGINT);
-    sigaddset(&set,SIGALRM);
-    sigprocmask(SIG_SETMASK,&set,NULL);
-    printf("Will raise SIGINT:\n");
+    M_TRACE("---------  Begin test_sigpending()  ---------\n");
+
+    //添加信号处理程序
+    add_sigaction(SIGINT,NULL,0,0,sig_print);
+    add_sigaction(SIGALRM,NULL,0,0,sig_print);
+    add_sigaction(SIGCONT,NULL,0,0,sig_print);
+    //**** 设置进程的信号屏蔽字 *****//
+    sigset_t set,o_set;
+    My_sigemptyset(&set);
+    My_sigaddset(&set,SIGINT);
+    My_sigaddset(&set,SIGALRM);
+    print_progress_mask_sigset(); // 打印原始的信号屏蔽字
+    My_sigprocmask(SIG_SETMASK,&set,&o_set);// 设置新的信号屏蔽字
+    print_progress_mask_sigset(); // 打印新的信号屏蔽字
+
+    //******* 查看未决的信号 *****//
+    print_progress_pending_sigset();
+    raise(SIGCONT);
     raise(SIGINT);
-    test_sigpending();
-    printf("Will raise SIGALRM:\n");
     raise(SIGALRM);
-    test_sigpending();
-    return 0;
+    print_progress_pending_sigset(); // 发送三个信号之后，未决的信号集
+    //***** 设置进程的信号屏蔽字为空 *****//
+    My_sigemptyset(&set);
+    My_sigprocmask(SIG_SETMASK,&set,NULL);// 设置新的信号屏蔽字
+    print_progress_mask_sigset(); // 打印新的信号屏蔽字
+    print_progress_pending_sigset(); // 查看未决的信号集
+
+    My_sigprocmask(SIG_SETMASK,&o_set,NULL);// 还原信号屏蔽字
+    M_TRACE("---------  End test_sigpending()  ---------\n\n");
 }
 	```
 	![sigpending](../imgs/signal/sigpending.JPG)
@@ -722,121 +480,51 @@ int main(void)
 			nt ss_flags;   // 栈标识
 			```
 
-14. 示例：
+14. 示例：在`main`函数中调用 `test_sigaction`函数
 
 	```
-#include <stdio.h>
-#include<unistd.h>
-#include<signal.h>
-#include<errno.h>
-#include<string.h>
-void print_context_t(ucontext_t *t)
+void test_sigaction()
 {
-    printf("In context:\t");
-    print_sigset(&t->uc_sigmask);
-}
-void print_current_sigset()
-{
-    sigset_t old_set;
-    sigset_t set;
-    sigemptyset(&set);
-    sigprocmask(SIG_BLOCK,&set,&old_set);
-    printf("The current sigset is:\t");
-    print_sigset(&old_set);
-}
-void print_sigset(sigset_t *set)
-{
-    printf("set is:\t");
-    if(set==NULL)
-    {
-        printf("NULL\n");
-        return ;
-    }
-    if(sigismember(set,SIGABRT)) printf("SIGABRT\t");
-    if(sigismember(set,SIGALRM)) printf("SIGALRM\t");
-    if(sigismember(set,SIGBUS)) printf("SIGBUS\t");
-    if(sigismember(set,SIGCHLD)) printf("SIGCHLD\t");
-    if(sigismember(set,SIGCONT)) printf("SIGCONT\t");
-    if(sigismember(set,SIGFPE)) printf("SIGFPE\t");
-    if(sigismember(set,SIGHUP)) printf("SIGHUP\t");
-    if(sigismember(set,SIGILL)) printf("SIGILL\t");
-    if(sigismember(set,SIGINT)) printf("SIGINT\t");
-    if(sigismember(set,SIGIO)) printf("SIGIO\t");
-    if(sigismember(set,SIGIOT)) printf("SIGIOT\t");
-    if(sigismember(set,SIGKILL)) printf("SIGKILL\t");
-    if(sigismember(set,SIGPIPE)) printf("SIGPIPE\t");
-    if(sigismember(set,SIGPOLL)) printf("SIGPOLL\t");
-    if(sigismember(set,SIGPROF)) printf("SIGPROF\t");
-    if(sigismember(set,SIGPWR)) printf("SIGPWR\t");
-    if(sigismember(set,SIGQUIT)) printf("SIGQUIT\t");
-    if(sigismember(set,SIGSEGV)) printf("SIGSEGV\t");
-    if(sigismember(set,SIGSTKFLT)) printf("SIGSTKFLT\t");
-    if(sigismember(set,SIGSTOP)) printf("SIGSTOP\t");
-    if(sigismember(set,SIGSYS)) printf("SIGSYS\t");
-    if(sigismember(set,SIGTERM)) printf("SIGTERM\t");
-    if(sigismember(set,SIGTRAP)) printf("SIGTRAP\t");
-    if(sigismember(set,SIGTSTP)) printf("SIGTSTP\t");
-    if(sigismember(set,SIGTTIN)) printf("SIGTTIN\t");
-    if(sigismember(set,SIGTTOU)) printf("SIGTTOU\t");
-    if(sigismember(set,SIGURG)) printf("SIGURG\t");
-    if(sigismember(set,SIGUSR1)) printf("SIGUSR1\t");
-    if(sigismember(set,SIGUSR2)) printf("SIGUSR2\t");
-    if(sigismember(set,SIGVTALRM)) printf("SIGVTALRM\t");
-    if(sigismember(set,SIGWINCH)) printf("SIGWINCH\t");
-    if(sigismember(set,SIGXCPU)) printf("SIGXCPU\t");
-    if(sigismember(set,SIGXFSZ)) printf("SIGXFSZ\t");
-    printf("\n");
-}
-void sig_print(int signo,siginfo_t *info, void *context)
-{
-    printf("Begin signal Hanlder:\n");
-    psiginfo(info,"The siginfo is:\t");
-    print_context_t((ucontext_t *)context);
-    print_current_sigset();
-    printf("End signal Hanlder:\n");
-}
-void add_sigaction(int signo)
-{
-    sigset_t set;
-    sigemptyset(&set);
-    sigaddset(&set,SIGALRM);
+    M_TRACE("---------  Begin test_sigaction()  ---------\n");
+    print_progress_mask_sigset();
 
-    struct sigaction action;
-    action.sa_sigaction=sig_print;
-    action.sa_flags=SA_SIGINFO;
-    action.sa_mask=set;
-    if(sigaction(signo,&action,NULL)==-1)
-    {
-        printf("set sigaction for signal %s failed!,because %s\n",
-			strsignal(signo),strerror(errno));
-    }else
-    {
-        printf("set sigaction for signal %s successed\n",strsignal(signo));
-    }
-}
-int main(void)
-{
-    print_current_sigset();
+    //********* 设置进程的信号屏蔽字 *****//
     sigset_t set;
-    sigemptyset(&set);
-    sigaddset(&set,SIGPIPE);
-    sigprocmask(SIG_SETMASK,&set,NULL);
-    printf("After block SIGPIPE:\t");
-    print_current_sigset();
+    My_sigemptyset(&set);
+    My_sigaddset(&set,SIGPIPE);
+    My_sigprocmask(SIG_SETMASK,&set,NULL);
+    print_progress_mask_sigset();
 
-    add_sigaction(SIGINT);
-    raise(SIGINT);
-    printf("Then :\t");
-    print_current_sigset();
-    return 0;
+    //******** 添加信号处理程序 ********//
+    add_sigaction(SIGINT,NULL,1,1,sig_print); // 几种组合：是否 no_deffer，是否 restart
+
+    if(fork()==0)
+    {
+        sleep(1); // 子进程先睡眠，使得父进程进入 check_waitpid()
+        kill(getppid(),SIGINT); // 子进程发送 SIGINT 到父进程
+        sleep(10); //子进程不是马上结束
+        _exit(0);
+    }
+    check_waitpid();
+    print_progress_mask_sigset();
+
+    M_TRACE("---------  End test_sigaction()  ---------\n\n");
 }
 	```
+	当不进行 NO_DEFER ，以及不自动重启被中断的系统调用时：
+
 	![sigaction](../imgs/signal/sigaction.JPG)
+
+	当进行 NO_DEFER ，以及不自动重启被中断的系统调用时：
+	![sigaction2](../imgs/signal/sigaction2.JPG)
+
+	当不进行 NO_DEFER ，以及自动重启被中断的系统调用时：
+	![sigaction3](../imgs/signal/sigaction3.JPG)
+
+	当进行 NO_DEFER ，以及自动重启被中断的系统调用时：
+	![sigaction4](../imgs/signal/sigaction4.JPG)
 	
-	进程的信号屏蔽字被设置为`SIGPIPE`，信号处理程序的`sa_mask`被设置为`SIGALRM`。可以看到
-	- 进程的信号屏蔽字始终是`SIGPIPE`
-	- 在信号处理程序中，进程的信号屏蔽字是`SIGPIPE,SIGALRM,SIGINT`，即原始信号屏蔽字、`sa_mask`以及处理的信号三者的并集
-	- 在信号处理程序中，`context`参数保存了跳转到进程正常执行路径的一些上下文，最典型的是`context->uc_sigmask`保存了进程的原始信号屏蔽字
+	
 			
 15. `sigsetjmp/siglongjmp`函数：用于信号处理程序中的跳转函数
 
@@ -863,113 +551,37 @@ int main(void)
 	注意：`savemask`非0时，调用`sigsetjmp`会在`env`中记录下当前的信号屏蔽字。如果后续`siglongjmp`跳转，则恢复的是`sigsetjmp`时的信号屏蔽字，而不是进入信号处理程序之前时刻的信号屏蔽字。
 
 
-16. 示例：
+16. 示例：在`main`函数中调用`test_sigsetjmp_siglongjmp`函数：
 
 	```
-#include <stdio.h>
-#include<unistd.h>
-#include<signal.h>
-#include<errno.h>
-#include<string.h>
-#include<setjmp.h>
-sigjmp_buf env;
-void print_current_sigset()
+void test_sigsetjmp_siglongjmp()
 {
-    sigset_t old_set;
-    sigset_t set;
-    sigemptyset(&set);
-    sigprocmask(SIG_BLOCK,&set,&old_set);
-    printf("The current sigset is:\t");
-    print_sigset(&old_set);
-}
-void print_sigset(sigset_t *set)
-{
-    printf("set is:\t");
-    if(set==NULL)
-    {
-        printf("NULL\n");
-        return ;
-    }
-    if(sigismember(set,SIGABRT)) printf("SIGABRT\t");
-    if(sigismember(set,SIGALRM)) printf("SIGALRM\t");
-    if(sigismember(set,SIGBUS)) printf("SIGBUS\t");
-    if(sigismember(set,SIGCHLD)) printf("SIGCHLD\t");
-    if(sigismember(set,SIGCONT)) printf("SIGCONT\t");
-    if(sigismember(set,SIGFPE)) printf("SIGFPE\t");
-    if(sigismember(set,SIGHUP)) printf("SIGHUP\t");
-    if(sigismember(set,SIGILL)) printf("SIGILL\t");
-    if(sigismember(set,SIGINT)) printf("SIGINT\t");
-    if(sigismember(set,SIGIO)) printf("SIGIO\t");
-    if(sigismember(set,SIGIOT)) printf("SIGIOT\t");
-    if(sigismember(set,SIGKILL)) printf("SIGKILL\t");
-    if(sigismember(set,SIGPIPE)) printf("SIGPIPE\t");
-    if(sigismember(set,SIGPOLL)) printf("SIGPOLL\t");
-    if(sigismember(set,SIGPROF)) printf("SIGPROF\t");
-    if(sigismember(set,SIGPWR)) printf("SIGPWR\t");
-    if(sigismember(set,SIGQUIT)) printf("SIGQUIT\t");
-    if(sigismember(set,SIGSEGV)) printf("SIGSEGV\t");
-    if(sigismember(set,SIGSTKFLT)) printf("SIGSTKFLT\t");
-    if(sigismember(set,SIGSTOP)) printf("SIGSTOP\t");
-    if(sigismember(set,SIGSYS)) printf("SIGSYS\t");
-    if(sigismember(set,SIGTERM)) printf("SIGTERM\t");
-    if(sigismember(set,SIGTRAP)) printf("SIGTRAP\t");
-    if(sigismember(set,SIGTSTP)) printf("SIGTSTP\t");
-    if(sigismember(set,SIGTTIN)) printf("SIGTTIN\t");
-    if(sigismember(set,SIGTTOU)) printf("SIGTTOU\t");
-    if(sigismember(set,SIGURG)) printf("SIGURG\t");
-    if(sigismember(set,SIGUSR1)) printf("SIGUSR1\t");
-    if(sigismember(set,SIGUSR2)) printf("SIGUSR2\t");
-    if(sigismember(set,SIGVTALRM)) printf("SIGVTALRM\t");
-    if(sigismember(set,SIGWINCH)) printf("SIGWINCH\t");
-    if(sigismember(set,SIGXCPU)) printf("SIGXCPU\t");
-    if(sigismember(set,SIGXFSZ)) printf("SIGXFSZ\t");
-    printf("\n");
-}
-void sig_print_and_long_jmp(int signo,siginfo_t *info, void *context)
-{
-    printf("Begin signal Hanlder:\n");
-    psiginfo(info,"The siginfo is:\t");
-    siglongjmp(env,signo);
-    printf("End signal Hanlder:\n");
-}
-void add_sigaction(int signo)
-{
-    struct sigaction action;
-    action.sa_sigaction=sig_print_and_long_jmp;
-    action.sa_flags=SA_SIGINFO;
-    if(sigaction(signo,&action,NULL)==-1)
-    {
-        printf("set sigaction for signal %s failed!,because %s\n",strsignal(signo),
-		strerror(errno));
-    }else
-    {
-        printf("set sigaction for signal %s successed\n",strsignal(signo));
-    }
-}
-int main(void)
-{
-    add_sigaction(SIGINT);
-    add_sigaction(SIGALRM);
-    print_current_sigset();
+    M_TRACE("---------  Begin test_setjmp_longjmp()  ---------\n");
+    print_progress_mask_sigset(); //打印当前的信号屏蔽字
+
+    add_sigaction(SIGINT,NULL,0,1,sig_print);
+    add_sigaction(SIGALRM,NULL,0,1,sig_print);
+
+
     int jmpval=sigsetjmp(env,0);
     switch (jmpval) {
-    case 0:
-        raise(SIGINT);
-        break;
-    case SIGINT:
-        printf("SIGINT:After longjmp from  sig handler\t");
-        print_current_sigset();
-        raise(SIGALRM);
-        break;
-    case SIGALRM:
-        printf("SIGALRM:After longjmp from  sig handler\t");
-        print_current_sigset();
-        break;
-    default:
-        printf("Never happened\n");
-        break;
-    }
-    return 0;
+        case 0://首次遇到
+            raise(SIGINT);
+            break;
+        case SIGINT:
+            printf("**** SIGINT:After siglongjmp from  signal handler**** \n");
+            print_progress_mask_sigset(); //打印当前的信号屏蔽字
+            raise(SIGALRM);
+            break;
+        case SIGALRM:
+            printf("**** SIGALRM:After siglongjmp from  signal handler**** \n");
+            print_progress_mask_sigset(); //打印当前的信号屏蔽字
+            break;
+        default:
+            printf("Never happened\n");
+            break;
+        }
+    M_TRACE("---------  End test_setjmp_longjmp()  ---------\n\n");
 }
 	```
 	![siglongjmp](../imgs/signal/siglongjmp.JPG)
@@ -996,65 +608,37 @@ int main(void)
 
 	`sigsuspend`没有成功返回值。如果它返回到调用者，则总是返回-1，并将`errno`设置为`EINTER`，表示一个被中断的系统调用。
 
-18. 示例：
+18. 示例：在`main`函数中调用`test_sigsuspend`函数：
 
 	```
-#include <stdio.h>
-#include<unistd.h>
-#include<signal.h>
-#include<errno.h>
-#include<string.h>
-void sig_print(int signo,siginfo_t *info, void *context)
+void test_sigsuspend()
 {
-    printf("Begin signal Hanlder:\n");
-    psiginfo(info,"The siginfo is:\t");
-    printf("End signal Hanlder:\n");
-}
-void add_sigaction(int signo)
-{
-    struct sigaction action;
-    action.sa_sigaction=sig_print;
-    action.sa_flags=SA_SIGINFO;
-    if(sigaction(signo,&action,NULL)==-1)
-    {
-        printf("set sigaction for signal %s failed!,because %s\n",strsignal(signo),
-		strerror(errno));
-    }else
-    {
-        printf("set sigaction for signal %s successed\n",strsignal(signo));
-    }
-}
-void child()
-{
-    if(fork()==0)
-    {//child
-        sleep(1);
-        kill(getppid(),SIGINT);
-        kill(getppid(),SIGALRM);
-        _exit(0);
-    }else
-    {
-        sigset_t set;
-        sigemptyset(&set);
-        sigaddset(&set,SIGINT);
-        int val=sigsuspend(&set);
-        printf("sigsuspend returns %d\n",val);
-        printf("errno is %s\n",strerror(errno));
-    }
-}
-int main(void)
-{
-    add_sigaction(SIGINT);
-    add_sigaction(SIGALRM);
-    child();
-    return 0;
+    M_TRACE("---------  Begin test_sigsuspend()  ---------\n");
+    //***** 添加信号处理程序 ****//
+    add_sigaction(SIGINT,NULL,0,1,sig_print);
+    add_sigaction(SIGALRM,NULL,0,1,sig_print);
+    create_child();
+    //***** 只有父进程能到达此处 ******//
+
+    print_progress_mask_sigset(); // 当前进程的信号屏蔽字
+    print_progress_pending_sigset(); // 当前进程的未决的信号集
+    sigset_t set;
+    My_sigemptyset(&set);
+    My_sigaddset(&set,SIGINT);
+    My_sigsuspend(&set); //投入睡眠
+    print_progress_mask_sigset(); // 当前进程的信号屏蔽字
+    print_progress_pending_sigset(); // 当前进程的未决的信号集
+    check_waitpid_signal();
+
+    M_TRACE("---------  End test_sigsuspend()  ---------\n\n");
 }
 	```
 	![sigsuspend](../imgs/signal/sigsuspend.JPG)
 
-	父进程调用`sigsuspend`将自己投入睡眠并设置进程信号屏蔽字为`SIGINT`，然后子进程依次向父进程发送了`SIGAINT`与`SIGALRM`信号。
-	- 父进程收到`SIGINT`时，因为此时进程信号屏蔽字是`SIGINT`，则`SIGINT`被阻塞，该信号是未决的
-	- 父进程收到`SIGALRM`时，先执行信号处理程序，然后从`sigsuspend`的睡眠中返回。返回时会将进程的信号屏蔽字恢复为原值。此时递送`SIGINT`信号。所以`SIGINT`先发送，但是其信号处理程序后执行
+	父进程调用`sigsuspend`将自己投入睡眠并设置进程信号屏蔽字为`SIGINT`，然后子进程向父进程发送了`SIGALRM`信号。父进程收到`SIGALRM`时，先执行信号处理程序，然后从`sigsuspend`的睡眠中返回。返回时会将进程的信号屏蔽字恢复为原值。
+
+	如果子进程想父进程发送了`SIGINT`信号，则父进程始终阻塞在`sigsuspend` 中：
+	![sigsuspend2](../imgs/signal/sigsuspend2.JPG)
 
 19. `abort`函数：是程序异常终止
 
@@ -1066,66 +650,43 @@ int main(void)
 	`abort`函数将`SIGABRT`信号发送给调用进程。对于`SIGABRT`信号，任何进程都不能忽略此信号。
 
 	- `ISO C`要求：如果捕捉到了`SIGABRT`信号，则信号处理程序不会返回到其调用者，因此必须在信号处理程序中调用`exit`、`_exit`、`_Exit`、`longjmp`、`siglongjmp`之一，因为只有这些函数才不返回到其调用者
-	>Linux 中测试：没有这个要求
+	>Linux 中测试：没有这个要求，而是直接就退出程序
 	- `POSIX`要求：`abort`不理会进程对`SIGABRT`信号的阻塞和忽略行为
 
 	进程捕捉`SIGABRT`的目的是为了在进程终止之前由进程执行所需的清理工作。如果进程不在`SIGABRT`信号处理程序中终止自己，则`POSIX`声明，当信号处理程序返回时，`abort`终止该进程。
 
-20. 示例：
+20. 示例：在`main`函数中调用`test_abort`函数：
 
 	```
-#include <stdio.h>
-#include <stdio.h>
-#include<unistd.h>
-#include<signal.h>
-#include<errno.h>
-#include<string.h>
-#include<stdlib.h>
-void sig_print(int signo,siginfo_t *info, void *context)
+void test_abort()
 {
-    printf("Begin signal Hanlder:\n");
-    psiginfo(info,"The siginfo is:\t");
-    printf("End signal Hanlder:\n");
-}
-void add_sigaction(int signo)
-{
-    struct sigaction action;
-    action.sa_sigaction=sig_print;
-    action.sa_flags=SA_SIGINFO;
-    if(sigaction(signo,&action,NULL)==-1)
-    {
-        printf("set sigaction for signal %s failed!,because %s\n",strsignal(signo),
-		strerror(errno));
-    }else
-    {
-        printf("set sigaction for signal %s successed\n",strsignal(signo));
-    }
-}
-void child()
-{
-    add_sigaction(SIGABRT);
-    if(fork()==0)
-    {//child
-        abort();
-    }else
-    {
-        sigset_t set;
-        sigemptyset(&set);
-        sigaddset(&set,SIGABRT);
-        sigprocmask(SIG_SETMASK,&set,NULL);
-        abort();
-    }
-}
-int main(void)
-{
-    child();
-    return 0;
+    M_TRACE("---------  Begin test_abort()  ---------\n");
+
+    //**** 添加信号处理程序 ****//
+    add_sigaction(SIGABRT,NULL,0,1,sig_print);
+    //**** 设置进程的信号屏蔽字  ****//
+    print_progress_mask_sigset(); // 打印进程的信号屏蔽字
+    sigset_t set;
+    sigset_t o_set; // 保存旧的进程的信号屏蔽字
+    My_sigemptyset(&set);
+    My_sigaddset(&set,SIGABRT);
+    My_sigprocmask(SIG_SETMASK,&set,&o_set);//设置进程的信号屏蔽字
+    print_progress_mask_sigset(); // 打印进程的信号屏蔽字
+
+    //*****  调用 abort() ****//
+    abort();
+
+    My_sigprocmask(SIG_SETMASK,&o_set,NULL); // 恢复进程的信号屏蔽字
+    M_TRACE("---------  End test_abort()  ---------\n\n");
 }
 	```
 
 	![abort](../imgs/signal/abort.JPG)
 	
-	可见在父进程中，虽然设置了进程的信号屏蔽字，但是父进程仍然递送`SIGABRT`信号。
+	可见:
+	- 在进程中，虽然设置了进程的信号屏蔽字为`SIGABRT`，但是进程仍然递送`SIGABRT`信号。
+	- 当捕获了`SIGABRT`信号时，从信号处理程序返回时，直接退出进程，而不是返回原上下文中。
+	> 虽然在信号处理程序中没有显式给出`_exit`语句，但是这就是`SIGABRT`的语义。
 
 21. `sleep/nanosleep/clock_nanosleep`函数：将进程投入睡眠
 
@@ -1152,7 +713,7 @@ int main(void)
 	- 对于`nanosleep`函数：
 		- 参数：
 			- `reqtp`：它指向的结构用秒和纳秒指定了需要休眠的时间长度
-			- `remtp`：如果某个信号中断了休眠间隔，进程并未终止，则它指向的结构存放为休眠完的时间长度。如果对未休眠完的时间不感兴趣，则可以设置它为`NULL`
+			- `remtp`：如果某个信号中断了休眠间隔，进程并未终止，则它指向的结构存放未休眠完的时间长度。如果对未休眠完的时间不感兴趣，则可以设置它为`NULL`
 		- 返回值：
 			- 如果休眠到要求的时间，则返回0
 			- 如果未休眠到要求的时间（被信号中断），则返回 -1
@@ -1170,7 +731,7 @@ int main(void)
 				- 0：表示休眠时间是相对的（如休眠的时间为 3秒）
 				- `TIMER_ABSTIME`：休眠时间是绝对的（如休眠到时钟到达某个特定的刻度）
 			- `reqtp`：它指向的结构用秒和纳秒指定了需要休眠的时间长度
-			- `remtp`：如果某个信号中断了休眠间隔，进程并未终止，则它指向的结构存放为休眠完的时间长度。如果对未休眠完的时间不感兴趣，则可以设置它为`NULL`。注意如果使用绝对时间时，`remtp`未使用，因为没有必要。
+			- `remtp`：如果某个信号中断了休眠间隔，进程并未终止，则它指向的结构存放未休眠完的时间长度。如果对未休眠完的时间不感兴趣，则可以设置它为`NULL`。注意如果使用绝对时间时，`remtp`未使用，因为没有必要。
 		- 返回值：
 			- 若休眠到要求的时间，返回 0
 			- 若出错，返回错误码
@@ -1180,94 +741,40 @@ int main(void)
 		要求提供绝对延迟是因为某些应用对休眠长度有精度要求。而相对休眠时间会导致实际休眠比要求的长（处理器调度和抢占可能会导致相对休眠时间超过实际需要的时间间隔）
 
 
-22. 示例：
+22. 示例：在`main`函数中调用`test_sleep_nanosleep`函数
 
 	```
-#include <stdio.h>
-#include <stdio.h>
-#include<unistd.h>
-#include<signal.h>
-#include<errno.h>
-#include<string.h>
-#include<time.h>
-void sig_print(int signo,siginfo_t *info, void *context)
+void test_sleep_nanosleep()
 {
-    printf("Begin signal Hanlder:\n");
-    psiginfo(info,"The siginfo is:\t");
-    printf("End signal Hanlder:\n");
-}
-void add_sigaction(int signo)
-{
-    struct sigaction action;
-    action.sa_sigaction=sig_print;
-    action.sa_flags=SA_SIGINFO;
-    if(sigaction(signo,&action,NULL)==-1)
-    {
-        printf("set sigaction for signal %s failed!,because %s\n",strsignal(signo)
-		,strerror(errno));
-    }else
-    {
-        printf("set sigaction for signal %s successed\n",strsignal(signo));
-    }
-}
-void test_sleep(unsigned int seconds)
-{
-    unsigned int remains;
-    remains=sleep(seconds);
-    printf("Wake up from sleep, remains %d s\n",remains);
-}
-void test_nanosleep(unsigned int seconds)
-{
-    struct timespec request_time;
-    struct timespec remain_time;
-
-    request_time.tv_sec=seconds;
-    request_time.tv_nsec=0;
-    if(nanosleep(&request_time,&remain_time)==0)
-    {
-        printf("Wake up of time deadline!\n");
-    }else
-    {
-        printf("Wake up bacause of interuption,remains %s s and %s ns\n",
-                remain_time.tv_sec,remain_time.tv_nsec);
-    }
-}
-void test_clock_nanosleep(seconds)
-{
-    struct timespec request_time;
-    struct timespec remain_time;
-
-    request_time.tv_sec=seconds;
-    request_time.tv_nsec=0;
-    if(clock_nanosleep(CLOCK_REALTIME,0,&request_time,&remain_time)==0)
-    {
-        printf("Wake up of time deadline!\n");
-    }else
-    {
-        printf("Wake up bacause of interuption,remains %s s and %s ns\n",
-                remain_time.tv_sec,remain_time.tv_nsec);
-    }
-}
-int main(void)
-{
-    add_sigaction(SIGALRM);
-    printf("Test sleep\n");
-    test_sleep(2);
-    printf("Test nanosleep\n");
-    test_nanosleep(2);
-    printf("Test clock_nanosleep\n");
-    test_clock_nanosleep(2);
-    return 0;
+    M_TRACE("---------  Begin test_alarm()  ---------\n");
+    add_sigaction(SIGINT,NULL,0,0,sig_print);
+    add_sigaction(SIGALRM,NULL,0,0,sig_print);
+    create_child();
+    // 只有父进程能到达此处
+    My_sleep(3);
+//    struct timespec request_time;
+//    struct timespec remain_time;
+//    request_time.tv_nsec=100;
+//    request_time.tv_sec=3;
+//    My_nanosleep(&request_time,&remain_time);
+    M_TRACE("---------  End test_alarm()  ---------\n\n");
 }
 	```
 	![sleep](../imgs/signal/sleep.JPG)
 
 	可见在`sleep`过程中根本没有发送`SIGALRM`信号。因此也就没有使用定时器的实现方式。
 
+	如果我们使用`nano_sleep`，则结果如下。 此时精度更高。
+	![sleep2](../imgs/signal/sleep2.JPG)
+
+
+	如果我们使用`clock_nanosleep`，则可以指定不同的时钟。这里我们让父进程休眠的时间为：父进程`CPU`满3秒则结束`clock_nanosleep`。当父进程被信号中断时，`CPU`时间才仅仅消耗了几百毫秒而已。
+	![sleep3](../imgs/signal/sleep3.JPG)		
+
 23. `sigqueue`函数：向进程发送排队的信号
 
 	```
-	# include<singal.h>
+	# include<signal.h>
 	int sigqueue(pid_t pid,int signo,const union sigval value);
 	```
 	- 参数：

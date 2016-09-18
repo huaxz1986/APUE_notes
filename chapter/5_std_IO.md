@@ -194,101 +194,41 @@
 	- 所有带未写缓存数据的标准IO流都被冲洗
 	- 所有打开的标准IO流都被关闭
 
-3. 示例
+3. 示例:在 `main`函数中调用 `test_fopen_fwide_setvbuf`函数：
 
 	```
-	#include <stdio.h>
-	#include<string.h>
-	#include<errno.h>
-	#include<wchar.h>
+void test_fopen_fwide_setvbuf()
+{
+    M_TRACE("---------  Begin test_fopen_fwide_setvbuf()  ---------\n");
+    assert(prepare_file("test",NULL,0,S_IRWXU)==0);
 
-	void print_FILE_wide(FILE* fp)
-	{
-    	errno=0;
-    	int mode;
-    	mode=fwide(fp,0);
-    	if(errno!=0)
-    	{
-        	printf("\tprint_FILE_wide error,because %s\n",strerror(errno));
-    	}else
-    	{
-        	if(mode>0) printf("\twide type is wide byte!\n");
-        	else if(mode<0) printf("\twide type is byte!\n");
-        	else printf("\twide type is undecided!\n");
-    	}
-	}
-	void set_FILE_wide(FILE *fp,int mode)
-	{
-   	 errno=0;
-    	fwide(fp,mode);
-    	if(errno!=0)
-    	{
-        	printf("\tset_FILE_wide error,because %s\n",strerror(errno));
-    	}else
-    	{
-    	    printf("\tset_FILE_wide sucess\n");
-    	}
-	}
-	void print_FILE(FILE *fp)
-	{
-   	 printf("\t\tfile descriptor is :%d\n",fp->_fileno);
-    	printf("\t\tbuffer address is :0x%x\n",fp->_IO_buf_base);
-    	printf("\t\tbuffer length is :%d\n",fp->_IO_buf_end-fp->_IO_buf_base);
-    	printf("\t\tFILE status is :0x%x\n",fp->_flags);
-	}
-	void print_stdin_out_err()
-	{
-    	printf("\t stdin wide type:");
-   	 print_FILE_wide(stdin);
-   	 printf("\t stdout wide type:");
-    	print_FILE_wide(stdout);
-    	printf("\t stderr wide type:");
-    	print_FILE_wide(stderr);
-    	printf("\tstdin FILE struct:");
-   	 print_FILE(stdin);
-    	printf("\tstdout FILE struct:");
-    	print_FILE(stdout);
-    	printf("\tstderr FILE struct:");
-    	print_FILE(stderr);
-	}
-	void set_FILE_buf(FILE *fp,int mode)
-	{
-    	if(-1==setvbuf(fp,NULL,mode,0))
-    	{
-       	 printf("setvbuf failed,because %s!\n",strerror(errno));
-    	}else
-    	{
-        	printf("setvbuf sucess!\n");
-    	}
-	}
-	int main(int argc, char *argv[])
-	{
-    	FILE *fp;
-    	printf("Test stdin,stdout,stderr:\n");
-    	print_stdin_out_err();
-    	printf("Test a custom FILE:\n");
-    	fp=fopen("/home/huaxz1986/test","wb");
-    	if(fp==NULL)
-        	return;
-    	printf("\t wide type is:");
-    	print_FILE_wide(fp);
-    	printf("\t expected set wide type to wide byte:");
-    	set_FILE_wide(fp,1);
-    	printf("\t wide type is:");
-    	print_FILE_wide(fp);
-   	 printf("\t expected set wide type to byte:");
-    	set_FILE_wide(fp,-1);
-    	printf("\t wide type is:");
-    	print_FILE_wide(fp);
-   	 printf("FILE struct is :");
-   	 print_FILE(fp);
-    	printf("set_FILE_buf to unbuffered:");
-    	set_FILE_buf(fp,_IONBF);
-    	printf("FILE struct is :");
-    	print_FILE(fp);
-    	fclose(fp);
-    	return 0;
-	}
+    My_fwide(stdin,0); //打印 stdin 的流向
+    My_fwide(stdout,0); //打印 stdout 的流向
+    My_fwide(stderr,0); //打印 stderr 的流向
+    print_FILE(stdin); //打印 stdin 结构
+    print_FILE(stdout); //打印 stdout 结构
+    print_FILE(stderr); //打印 stderr 结构
+
+    FILE *fp=My_fopen("test","r+");
+    if(NULL!=fp)
+    {
+        My_fwide(fp,0); //打印 fp 的流向
+        My_fwide(fp,-1); //设置 fp 为字节流 然后打印 fp 的流向
+        My_fwide(fp,1); //无法修改已定向的流
+        print_FILE(fp);
+        //**** 设置不同的缓冲 ****//
+        set_full_buf(fp);
+        print_FILE(fp);
+        set_line_buf(fp);
+        print_FILE(fp);
+        set_no_buf(fp);
+        print_FILE(fp);
+
+        fclose(fp); //关闭流
+    }
+    un_prepare_file("test");
+    M_TRACE("---------  End test_fopen_fwide_setvbuf()  ---------\n\n");
+}
 	```
 	![FILE_struct](../imgs/std_IO/FILE_struct.JPG)
 
@@ -359,7 +299,7 @@
 	- 出错标志
 	- 文件结束标志
 	
-	调用`clearerr`函数可以清楚这两个标志
+	调用`clearerr`函数可以清除这两个标志
 
 5. `ungetc`函数：将字符压回流中
 
@@ -416,15 +356,16 @@
 		- `fp`：打开的文件对象指针
 	- 返回值：
 		- 成功：则返回`buf`
-		- 到达文件尾端：返回`EOF`
-		- 失败：返回`EOF`
+		- 到达文件尾端：返回`NULL`
+		- 失败：返回`NULL`
 
 	注意：
 	- 对于`fgets`函数，必须指定缓冲区的长度`n`。该函数一直读到下一个换行符为止，但是不超过`n-1`个字符。
 		- 无论读到多少个字符，缓冲区一定以`null`字节结尾
 		- 若某一行包括换行符超过 `n-1`个字节，则`fgets`只返回一个不完整的行；下次调用`fgets`会继续读该行
 	- 对于`gets`函数，从标准输入总读取字符。由于无法指定缓冲区的长度，因此很可能造成缓冲区溢出漏洞。故该函数不推荐使用
-	- 对于发生错误和读到末尾，都是返回`EOF`
+	- 对于发生错误和读到末尾，都是返回`NULL`	
+	
 
 8. `fputs/puts`函数：一次写一行字符：
 
@@ -442,7 +383,7 @@
 
 	注意：
 	- `fputs`和`puts`都是将一个以`null`字节终止的字符串写到流中，末尾的`null`字符不写出！。<font color='red'>字符串不要求以换行符结尾！</font>
-	- `puts`将字符串写道标准输出，末尾的`null`字符不写出！<font color='red'>但是`puts`随后又将一个换行符写到标准输出中！</font>。而`fputs`不会自动添加换行符。
+	- `puts`将字符串写到标准输出，末尾的`null`字符不写出！<font color='red'>但是`puts`随后又将一个换行符写到标准输出中！</font>。而`fputs`不会自动添加换行符。
 	> 虽然`puts`是安全的，但是我们也是要避免使用它，以免要记住它在最后是否添加了一个换行符。
 	
 9. `fread/fwrite`函数：执行二进制读写IO
@@ -466,215 +407,8 @@
 	- 同一个`struct`，可能在不同操作系统或者不同编译系统中，成员的偏移量不同
 	- 存储多字节整数和浮点数的二进制格式在不同的操作系统中可能不同
 
-10. 示例：
 
-	```
-	#include <stdio.h>
-	#include<string.h>
-	#include<errno.h>
-
-	#define N 5
-
-	//################# binary io ##############
-	struct my_struct{
-    	int i1;
-    	double i2;
-	};
-	struct my_struct datas[N];
-	void initital_datas()
-	{
-   	 int i=0;
-    	for(i=0;i<N;i++)
-    	{
-       	 datas[i].i1=i;
-        	datas[i].i2=0.666;
-   	 }
-	}
-	void clear_datas()
-	{
-    	int i=0;
-    	for(i=0;i<N;i++)
-    	{
-        	datas[i].i1=0;
-        	datas[i].i2=0;
-    	}
-	}
-	void print_datas()
-	{
-   	 printf("Data is:\n");
-    	int i=0;
-    	for(int i=0;i<N;i++)
-	    {
-   	     printf("data[%d]: i1:%d, i2:%f\n",i,datas[i].i1,datas[2]);
-  	  }
-  	  printf("\n");
-	}
-	void test_fread(FILE*file)
-	{
- 	   size_t len;
- 	   len=fread(datas,sizeof(struct my_struct),N,file);
-  	  if(len!=N)
-  	  {
-   	     printf("\tRead binary data failed:");
-   	     test_error_eof(file);
-  	  }else
- 	   {
-  	      printf("\tRead binary data success!\n");
- 	   }
-	}
-	void test_fwrite(FILE*file)
-	{
-  	  size_t len;
-  	  len=fwrite(datas,sizeof(struct my_struct),N,file);
-  	  if(len!=N)
-  	  {
-    	    printf("\tWrite binary data failed,because %s!\n",strerror(errno));
-   	 }else
-   	 {
-   	     printf("\tWrite binary data success!\n");
-  	  }
-	}
-
-	//########## char io ################
-	void test_error_eof(FILE*file)
-	{
-
-  	  if(ferror(file)) printf("\tRead file error,because %s\n",strerror(errno));
-  	  else if(feof(file)) printf("\tAt the end of file\n");
-  	  else printf("\tUnkown error!\n");
-  	  clearerr(file);
-	}
-	void test_get_char(FILE*file)
-	{
- 	   int c;
-  	  if((c=fgetc(file))!=EOF)
-  	  {
-  	      printf("\tRead char<%c> success\n",c);
-
-  	  }else
-  	  {
-    	    printf("\tRead char failed:",c);
-    	    test_error_eof(file);
-    }
-	}
-	void test_put_char(int c,FILE*file)
-	{
- 	   int ok;
-  	  if((ok=fputc(c,file))!=EOF)
-   	 {
-     	   printf("\tWrite char<%c> sucess\n",ok);
-
-    	}else
-   	 {
-   	     printf("\tWrite char<%c> error,beause %s \n",strerror(errno));
-   	 }
-
-	}
-	void test_ungetc(int c,FILE*file)
-	{
- 	   int ok;
-  	  if((ok=ungetc(c,file))!=EOF)
-  	  {
-     	   printf("\tUngetc char<%c> sucess\n",ok);
-
-    	}else
-   	 {
-    	    printf("\tUngetc char<%c> failed:",ok);
-      	  test_error_eof(file);
-   	 }
-	}
-
-	//########### line io #############
-	char buffer[2048];
-	void print_buffer(int len)
-	{
- 	   int i=0;
-  	  printf("buffer:\n");
-  	  for (i=0;i<len;i++)
-  	  {
-   	     printf("\t0x%x;",buffer[i]);
-  	  }
-  	  printf("\n");
-	}
-
-	void test_fgets(FILE *file)
-	{
-	    char* buf;
-	    buf=fgets(buffer,2028,file);
-	    if(buf==NULL)
- 	   {
-    	    printf("fpgets failed:");
-    	     test_error_eof(file);
-  	  }else
-  	  {
-     	   printf("fpgets success\n");
-  	  }
-
-	}
-	void tet_fputs(const char*str,FILE *file)
-	{
- 	   int len;
-  	  len=fputs(str,file);
-  	  if(len==EOF)
-  	  {
-    	    printf("fputs <%s> failed,beause %s\n",str,strerror(errno));
-   	 }else
-   	 {
-    	    printf("fputs <%s> success\n",str);
-  	  }
-	}
-
-	int main(int argc, char *argv[])
-	{
-  	  FILE *fp_text,*fp_binary;
-  	  fp_text=fopen("/home/huaxz1986/test","w+");
-   	 if(fp_text==NULL) return;
-
-   	 //###### test char io #############
-   	 printf("\n-----------------Test char IO ----------------------\n");
-   	 printf("Test put char:\n");
-   	 test_put_char('A',fp_text);
-   	 rewind(fp_text);
-   	 printf("Test get char:\n ");
-   	 test_get_char(fp_text);
-  	  printf("Test ungetc:\n");
-  	  test_ungetc('B',fp_text);
-  	  printf("Test get char:\n ");
-  	  test_get_char(fp_text);
- 	   printf("Test get char:\n ");
- 	   test_get_char(fp_text);
- 	   //######### Test line io ##############
-  	  printf("\n-----------------Test line IO ----------------------\n");
-  	  rewind(fp_text);
-  	  tet_fputs("abcdefghijklmnopq",fp_text);
-  	  rewind(fp_text);
- 	   test_fgets(fp_text);
-   	 print_buffer(26);
-
-   	 //####### Test binary io #############
-   	 printf("\n-----------------Test binary IO ----------------------\n");
-   	 fp_binary=fopen("/home/huaxz1986/test2","w+b");
-   	 if(fp_binary==NULL) return;
-   	 initital_datas();
-   	 print_datas();
-    	printf("Test fwrite:\n");
-    	test_fwrite(fp_binary);
-   	 rewind(fp_binary);
-  	  printf("After Clear data:\n");
- 	   clear_datas();
-	  print_datas();
-	    printf("Test fread:\n");
-	    test_fread(fp_binary);
- 	   printf("After fread, the data is:\n");
-  	  print_datas();
-
-  	  return 0;
-	}
-	```
-	![FILE_read_write](../imgs/std_IO/FILE_read_write.JPG)
-
-
-11. 有三种方法定位标准IO流
+10. 有三种方法定位标准IO流
 
 	- 通过 `ftell/fseek`函数：
 
@@ -755,145 +489,42 @@
 			- 成功： 返回 0
 			- 失败： 返回非 0
 
-12. 示例
+11. 示例:在`main`函数中调用`test_get_put_seek` 函数：
 
 	```
-	#include <stdio.h>
-	#include<string.h>
-	#include<errno.h>
-	#define N 5
+void test_get_put_seek()
+{
+    M_TRACE("---------  Begin test_get_put_seek()  ---------\n");
+    assert(prepare_file("test_char",NULL,0,S_IRWXU)==0);
+    assert(prepare_file("test_line",NULL,0,S_IRWXU)==0);
+    assert(prepare_file("test_binary",NULL,0,S_IRWXU)==0);
 
-	//################# binary io ##############
-	struct my_struct{
-    	int i1;
-    	double i2;
-    	char i3;
-	};
-	struct my_struct datas[N];
-	void test_fwrite(FILE*file)
-	{
-    	size_t len;
-    	len=fwrite(datas,sizeof(struct my_struct),N,file);
-    	if(len!=N)
-    	{
-        	printf("\tWrite binary data failed,because %s!\n",strerror(errno));
-        	clearerr(file);
-    	}else
-    	{
-        	printf("\tWrite binary data success!\n");
-    	}
-	}
-	//########## char io ################
-	void test_error_eof(FILE*file)
-	{
+    FILE *file_char=My_fopen("test_char","r+");
+    FILE *file_line=My_fopen("test_line","r+");
+    FILE *file_binary=My_fopen("test_binary","rb+");
 
-    	if(ferror(file)) printf("\tRead file error,because %s\n",strerror(errno));
-    	else if(feof(file)) printf("\tAt the end of file\n");
-    	else printf("\tUnkown error!\n");
-    	clearerr(file);
-	}
-	void test_put_char(int c,FILE*file)
-	{
-    	int ok;
-    	if((ok=fputc(c,file))!=EOF)
-    	{
-        	printf("\tWrite char<%c> sucess\n",ok);
+    if((file_char!=NULL) && (file_line!=NULL) && (file_binary!=NULL))
+    {
+        printf("***** test read write char*****\n");
+        _test_read_write_char(file_char);
+        printf("\n\n***** test read write str*****\n");
+        _test_read_write_line(file_line);
+        printf("\n\n***** test read write binary*****\n");
+        _test_read_write_binary(file_binary);
+    }
 
-    	}else
-    	{
-        	printf("\tWrite char<%c> error,beause %s \n",strerror(errno));
-   	 }
+    //*** 关闭文件  ***//
+    if(file_char!=NULL) fclose(file_char);
+    if(file_line!=NULL) fclose(file_line);
+    if(file_binary!=NULL) fclose(file_binary);
 
-	}
-
-	//########### seek ###########
-	void test_tell(FILE *fp)
-	{
-   	 long ok=ftell(fp);
-    	fpos_t pos;
-
-    	if(ok==-1)
-    	{
-        	printf("\tftell error,because %s.",strerror(errno));
-        	clearerr(fp);
-    	}else
-    	{
-        	printf("\tftell :%d.",ok);
-    	}
-
-    	if(0==fgetpos(fp,&pos))
-    	{
-        	printf("\tfgetpos :%d\n",pos);
-    	}else
-    	{
-       	 printf("\tfgetpos error,because %s\n",strerror(errno));
-        	clearerr(fp);
-    	}
-
-	}
-	void test_seek(FILE *fp,int offset,int whence)
-	{
-    	int ok;
-    	ok=fseek(fp,offset,whence);
-    	if(ok!=-1)
-    	{
-       	 printf("\tfseek ok\n");
-    	}else
-    	{
-       		printf("\tfseek error,because %s\n",strerror(errno));
-        	clearerr(fp);
-    	}
-	}
-
-	int main(int argc, char *argv[])
-	{
-    	FILE *fp_text,*fp_binary;
-    	//####### test text file seek ########
-    	fp_text=fopen("/home/huaxz1986/test","w+");
-    	if(fp_text==NULL) return;
-   	 printf("\n-----------------Test char IO ----------------------\n");
-   	 test_put_char('A',fp_text);
-   	 test_put_char('B',fp_text);
-   	 test_put_char('C',fp_text);
-    	test_put_char('D',fp_text);
-    	test_put_char('E',fp_text);
-    	printf("Test tell:");
-    	test_tell(fp_text);
-    	printf("Test SEEK_SET:");
-    	test_seek(fp_text,0,SEEK_SET);
-   	 printf("  current pos:");
-   	 test_tell(fp_text);
-    	printf("Test SEEK_CUR:");
-    	test_seek(fp_text,0,SEEK_CUR);
-    	printf("  current pos:");
-    	test_tell(fp_text);
-    	printf("Test SEEK_END:");
-    	test_seek(fp_text,0,SEEK_END);
-    	printf("  current pos:");
-    	test_tell(fp_text);
-
-    	printf("\n-----------------Test binary IO ----------------------\n");
-    	fp_binary=fopen("/home/huaxz1986/test2","w+b");
-    	if(fp_binary==NULL) return;
-    	test_fwrite(fp_binary);
-    	printf("Test tell:");
-    	test_tell(fp_binary);
-    	printf("Test SEEK_SET:");
-    	test_seek(fp_binary,0,SEEK_SET);
-   	 printf("  current pos:");
-    	test_tell(fp_binary);
-    	printf("Test SEEK_CUR:");
-   	 test_seek(fp_binary,0,SEEK_CUR);
-   	 printf("  current pos:");
-    	test_tell(fp_binary);
-    	printf("Test SEEK_END:");
-    	test_seek(fp_binary,0,SEEK_END);
-   	 printf("  current pos:");
-    	test_tell(fp_binary);
-    	return 0;
-	}
+    un_prepare_file("test_char");
+    un_prepare_file("test_line");
+    un_prepare_file("test_binary");
+    M_TRACE("---------  End test_get_put_seek()  ---------\n\n");
+}
 	```
-	![FILE_seek](../imgs/std_IO/FILE_seek.JPG)
+	![FILE_read_write_seek](../imgs/std_IO/FILE_read_write_seek.JPG)
 
 ## 格式化IO
 
@@ -1024,125 +655,23 @@
 	int vsscanf(const char *restrict buf,const char *restrict format,va_list arg);
 	```
 
-6. 示例：
+6. 示例： 在 `main`函数中调用`test_printf_scanf`函数：
 
 
 	```
-	#include <stdio.h>
-	#include<string.h>
-	#include<errno.h>
-	#include<memory.h>
-
-	#define LEN 32
-
-	char buffer[LEN];
-
-	void print_buffer()
-	{
-    	int i;
-    	printf("Buffer:\n");
-
-    	for(i=0;i<LEN;i++)
-        	printf("\t0x%x",buffer[i]);
-
-    	printf("\n");
-	}
-
-	void test_snprintf_int(int i)
-	{
-    	int ok;
-    	ok=snprintf(buffer,LEN,"%d",i);
-    	if(ok<0)
-    	{
-        	printf("\tsnprintf error,because:%s\n",strerror(errno));
-        	print_buffer();
-   	 }else
-    	{
-        	printf("\tsnprintf success, write %d chars\n",ok);
-        	print_buffer();
-    	}
-	}
-	void test_snprintf_char(char c)
-	{
-    	int ok;
-    	ok=snprintf(buffer,LEN,"%c",c);
-    	if(ok<0)
-    	{
-        	printf("\tsnprintf error,because:%s\n",strerror(errno));
-        	print_buffer();
-    	}else
-    	{
-        	printf("\tsnprintf success, write %d chars\n",ok);
-        	print_buffer();
-    	}
-	}
-	void test_snprintf_string(const char*s)
-	{
-    	int ok;
-    	ok=snprintf(buffer,LEN,"%s",s);
-    	if(ok<0)
-    	{
-        	printf("\tsnprintf error,because:%s\n",strerror(errno));
-        	print_buffer();
-    	}else
-    	{
-       	 printf("\tsnprintf success, write %d chars\n",ok);
-       	 print_buffer();
-    	}
-	}
-	void test_sscanf_int()
-	{
-   	int ok;
-  	 int i;
-   	ok=sscanf(buffer,"%d",&i);
-   	if(ok==EOF)
-   	{
-        	printf("\tsscanf error,because:%s\n",strerror(errno));
-   	}else
-   	{
-   	 printf("\tsscanf success, read %d items:i=%08d\n",ok,i);
-  	 }
-	}
-	void test_sscanf_char()
-	{
-   	int ok;
-   	char c;
-  	 ok=sscanf(buffer,"%c",&c);
-   	if(ok==EOF)
-   	{
-       	 printf("\tsscanf error,because:%s\n",strerror(errno));
-   	}else
-   	{
-   	 printf("\tsscanf success, read %d items:c=%c\n",ok,c);
-   	}
-	}
-	void test_sscanf_string()
-	{
-   	int ok;
-  	 char *s;
-  	 ok=sscanf(buffer,"%ms",&s);
-   	if(ok==EOF)
-   	{
-       	 printf("\tsscanf error,because:%s\n",strerror(errno));
-   	}else
-   	{
-   	 printf("\tsscanf success, read %d items:string=%s\n",ok,s);
-    	free(s);
-  	 }
-	}
-
-	int main(int argc, char *argv[])
-	{
-   		print_buffer();
-    	test_snprintf_int(99);
-    	test_sscanf_int();
-    	test_snprintf_char('A');
-    	test_sscanf_char();
-    	test_snprintf_string("abcdefghijklmn");
-    	test_sscanf_string();
-    	return 0;
-	}
-
+void test_printf_scanf()
+{
+    M_TRACE("---------  Begin test_printf_scanf()  ---------\n");
+    printf("**** test printf  *******\n");
+    _test_printf();
+    printf("\n\n**** test snprintf  *******\n");
+    _test_snprintf();
+    printf("\n\n**** test scanf  *******\n");
+    _test_scanf();
+    printf("\n\n**** test sscanf  *******\n");
+    _test_sscanf();
+    M_TRACE("---------  End test_printf_scanf()  ---------\n\n");
+}
 	```	
 	![print_scan](../imgs/std_IO/print_scan.JPG) 
 
@@ -1203,92 +732,18 @@
 	- `mkstemp`函数返回的文件描述符以读写方式打开。它创建的文件用访问权限位：`S_IRUSR|S_IWUSR`
 	- `mkstemp`创建的临时文件并不会自动删除
 
-4. 示例：
+4. 示例：在`main`函数中调用`test_tmpnam_mkdtemp`函数：
 
 	```
-	#include <stdio.h>
-	#include<stdlib.h>
-	#include<string.h>
-	#include<errno.h>
-
-
-	char buffer[L_tmpnam];
-
-	void print_buffer()
-	{
-    	int i;
-    	printf("\tBuffer:\n");
-
-    	for(i=0;i<L_tmpnam;i++)
-        	printf("\t0x%x",buffer[i]);
-
-    	printf("\n");
-	}
-	void test_tmpname()
-	{
-    	char *p;
-    	p=tmpnam(buffer);
-    	if(NULL==p)
-    	{
-        	printf("\ttmpnam failed,because of %s\n",strerror(errno));
-    	}else
-    	{
-        	printf("\ttmpnam success,file name is: %s\n",buffer);
-    	}
-	}
-	void test_tmpfile()
-	{
-    	FILE *fp;
-    	fp=tmpfile();
-    	if(fp==NULL)
-    	{
-       	 printf("\ttmpfile failed,because of %s\n",strerror(errno));
-    	}else
-    	{
-        	printf("\ttmpfile success,file descriptor is: %d\n",fp->_fileno);
-    	}
-	}
-	void test_mkdtemp()
-	{
-   	 char * name;
-   	 char old_name[128]="/home/huaxz1986/test/abc123XXXXXX";
-    	name=mkdtemp(old_name);
-    	if(NULL==name)
-    	{
-       	 printf("\ttest_mkdtemp failed,because of %s\n",strerror(errno));
-    	}else
-    	{
-        	printf("\ttest_mkdtemp success,the new name is %s\n",name);
-    	}
-	}
-	void test_mkstemp()
-	{
-        	int ok;
-       	 char old_name[128]="/home/huaxz1986/test/abc123XXXXXX";
-        	ok=mkstemp(old_name);
-        	if(-1==ok)
-        	{
-            	printf("\ttest_mkstemp failed,because of %s\n",strerror(errno));
-        	}else
-        	{
-            	printf("\ttest_mkstemp success, file descriptor is: %d\n",ok);
-        	}	
-	}
-
-	int main(int argc, char *argv[])
-	{
-   	 	print_buffer();
-    	printf("Test tmpname:\n");
-    	test_tmpname();
-    	print_buffer();
-    	printf("Test tmpfile:\n");
-    	test_tmpfile();
-    	printf("Test mkdtemp:\n");
-    	test_mkdtemp();
-    	printf("Test mkstemp:\n");
-    	test_mkstemp();
-    	return 0;
-	}
+void test_tmpnam_mkdtemp()
+{
+    M_TRACE("---------  Begin test_printf_scanf()  ---------\n");
+    printf("******** test tmpnam ********\n");
+    _test_tmpnam();
+    printf("\n\n******** test mkdtemp ********\n");
+    _test_mkdtemp();
+    M_TRACE("---------  End test_printf_scanf()  ---------\n\n");
+}
 	```
 
 	![make_temp_file](../imgs/std_IO/make_temp_file.JPG) 
@@ -1348,65 +803,41 @@
 		- 缓冲区地址和长度只有在调用`fclose`或者`fflush`后才有效
 		- 这些值只有在下一次写入或者调用`fclose`之前才有效。因为缓冲区可能增长，也可能需要重新分配
 
-6. 示例：
+6. 示例：在`main`函数中调用`test_memstream`函数：
 
 	```
-	#include <stdio.h>
-	#include<string.h>
-	#include<errno.h>
+void test_memstream()
+{
+    M_TRACE("---------  Begin test_memstream()  ---------\n");
+    char mem_buffer[16];
+    FILE *fp=My_fmemopen(mem_buffer,16,"r+");
+    if(NULL!=fp)
+    {
 
-	#define LEN 32
+        char read_write_buffer[8];
+        My_ftello(fp);   // 查看当前位置
+        //**** 写入 ****//
+        My_fputs("abcdefg\n",fp); // 每次7个字符加一个换行符
+        My_fputs("0123456789",fp); // 没有换行符
+        My_ftello(fp);   // 查看当前位置
+        fflush(fp);
+        print_char_buffer(mem_buffer,16);
+        //**** 读取 ****//
+        My_fseeko(fp,0,SEEK_SET); //重定位到文件头
+        My_ftello(fp); // 查看当前位置
+        My_fgets(read_write_buffer,8,fp); // 读取 abcdefg
+        My_fgets(read_write_buffer,8,fp); // 读取 \n
+        My_fgets(read_write_buffer,8,fp);// 读取 0123456，文件指针指向 null 字节
+        My_fgets(read_write_buffer,8,fp);// 遇到 EOF，即 null 字节 （最后一个字节为 null 字节，因此有效字节只有15个字节）
+        My_ftello(fp); // 查看当前位置，文件指针指向最后一个字节的下一个字节
+        My_fgets(read_write_buffer,8,fp);// 遇到 EOF，此时读取返回 EOF，并且是 ferror 返回真，且 feof 返回真
+        printf("feof=%d,ferror=%d\n",feof(fp),ferror(fp)); //ferror 返回真，且 feof 返回真
 
-	char buffer[LEN];
-
-	void print_buffer()
-	{
-    	int i;
-    	printf("\tBuffer:\n");
-
-    	for(i=0;i<LEN;i++)
-        	printf("\t0x%x",buffer[i]);
-
-    	printf("\n");
-	}
-	FILE * test_fmemopen()
-	{
-    		FILE *fp;
-    	fp=fmemopen(buffer,LEN,"r+");
-    	if(NULL==fp)
-    	{
-        	printf("\tfmemopen failed,because:%s\n",strerror(errno));
-        	return NULL;
-    	}
-    	else
-    	{
-        	printf("\tfmemopen success\n");
-        	return fp;
-    	}
-	}
-	
-	int main(int argc, char *argv[])
-	{
-   	 	FILE *fp;
-    	char read_buffer[LEN];
-    	print_buffer();
-    	fp=test_fmemopen();
-   	 	if(fp==NULL) return;
-    	printf("Write to mem FILE\n");
-    	fputs("abcedfghijklmn",fp);
-    	fflush(fp);# 必须冲洗才能在 buffer 中体现出来
-    	print_buffer();
-    	printf("Seek to begin\n");
-    	fseek(fp,0,SEEK_SET);
-    	printf("Write to mem FILE\n");
-    	fputs("ABCDEFG",fp);
-    	fflush(fp);
-    	print_buffer();
-    	printf("Read from mem FILE\n");
-    	fgets(read_buffer,LEN,fp);
-    	printf("\tread:%s\n",read_buffer);
-    	return 0;
-	}
+        print_char_buffer(mem_buffer,16); // 读取并不会删除 mem_buffer 中的内容
+        fclose(fp);
+    }
+    M_TRACE("---------  End test_memstream()  ---------\n\n");
+}
 	```
 
 	![mem_FILE_stream](../imgs/std_IO/mem_FILE_stream.JPG) 

@@ -62,40 +62,20 @@
 		> 这里没有要求`pid`和本进程的关系
 		- 返回值：成功，则返回进程组`ID`；失败返回 -1
 
-3. 示例
+3. 示例：在`main`函数中调用`test_getpgrp_getpgid`函数:
 
 	```
-#include <stdio.h>
-#include<string.h>
-#include<errno.h>
-#include<unistd.h>
-void test_getpgrp()
+void test_getpgrp_getpgid()
 {
-    printf("\tpid is %d,progress group id is %d\n",getpid(),getpgrp());
-}
-void test_getpgid(pid_t pid)
-{
-    pid_t gid;
-    gid=getpgid(pid);
-    if(gid==-1)
-    {
-        printf("\tgetpgid of pid %d is error,because %s\n",pid,strerror(errno));
-    }else
-    {
-        printf("\tpid is %d,progress group id is %d\n",pid,gid);
-    }
-}
-int main(int argc, char *argv[])
-{
-    printf("Test getpgrp\n");
-    test_getpgrp();
-    printf("Test getpgid of pid  %d\n",0);
-    test_getpgid(0);
-    printf("Test getpgid of pid  %d\n",1);
-    test_getpgid(1);
-    printf("Test getpgid of current pid\n");
-    test_getpgid(getpid());
-    return 0;
+    M_TRACE("---------  Begin test_getpgrp_getpgid()  ---------\n");
+    create_child();
+    // 只有父进程能到达此处
+    check_waitpid();
+    print_pid();
+    print_parent_pid();
+    My_getpgrp(); // 父进程自己
+    My_getpgid(getppid());// 父进程的父进程
+    M_TRACE("---------  End test_getpgrp_getpgid()  ---------\n\n");
 }
 	```
 	![get_process_group_id](../imgs/progress_relations/get_process_group_id.JPG)
@@ -122,58 +102,19 @@ int main(int argc, char *argv[])
 	- 在它的子进程调用`exec`之后，它就不再更改子进程的进程组ID
 	- 在大多数作业控制`shell`中，`fork`之后立即调用此函数，使得父进程设置其子进程的进程组ID，同时也使子进程设置其自己的进程组ID（这两个调用是冗余的，但是是个双保险）
 
-5. 示例
+5. 示例：在`main`函数中调用`test_setpgid`函数：
 
 	```
-#include <stdio.h>
-#include <stdio.h>
-#include<string.h>
-#include<errno.h>
-#include<unistd.h>
-void test_getpgid(pid_t pid)
+void test_setpgid()
 {
-    pid_t gid;
-    gid=getpgid(pid);
-    if(gid==-1)
-    {
-        printf("\tgetpgid of pid %d is error,because %s\n",pid,strerror(errno));
-    }else
-    {
-        printf("\tpid is %d,progress group id is %d\n",pid,gid);
-    }
-}
-void test_setpgid(pid_t pid,pid_t pgid)
-{
-    if(setpgid(pid,pgid)==-1)
-    {
-         printf("\tsetpgid of pid %d to pgid %d is error,
-			because %s\n",pid,pgid,strerror(errno));
-    }else
-    {
-        test_getpgid(pid);
-    }
-}
-void child()
-{
-    pid_t id;
-    id=fork();
-    if(id==0)
-    {//child
-        sleep(5);
-    }else
-    {//parent
-        printf("Set child's pgid to child's pid\n");
-        test_setpgid(id,id);
-        printf("Set child's pgid to 1\n");
-        test_setpgid(id,1);
-        printf("Set child's pgid to parent's pid\n");
-        test_setpgid(id,getpid());
-    }
-}
-int main(int argc, char *argv[])
-{
-    child();
-    return 0;
+    M_TRACE("---------  Begin test_setpgid()  ---------\n");
+    create_child();
+    // 只有父进程能到达此处
+    check_waitpid();
+    print_pid();
+    print_parent_pid();
+    My_getpgrp(); // 父进程自己
+    M_TRACE("---------  End test_setpgid()  ---------\n\n");
 }
 	```
   	![setpgid](../imgs/progress_relations/setpgid.JPG)
@@ -215,89 +156,30 @@ int main(int argc, char *argv[])
 
 	如果`pid`为0，则`getsid`返回调用进程的会话ID。如果`pid`并不属于调用者所在的会话，则调用进程就不能得到该会话ID
 
-4. 示例
+4. 示例：在`main`函数中调用`test_getsid_setsid`函数：
 
 	```
-#include <stdio.h>
-#include<string.h>
-#include<errno.h>
-#include<unistd.h>
-void test_getpgid(pid_t pid)
+void test_getsid_setsid()
 {
-    pid_t gid;
-    gid=getpgid(pid);
-    if(gid==-1)
-    {
-        printf("\tgetpgid of pid %d is error,because %s\n",pid,strerror(errno));
-    }else
-    {
-        printf("\tprogress_group_id  of pid %d is %d\n",pid,gid);
-    }
-}
-void test_getsid(pid_t pid)
-{
-    pid_t id;
-    id=getsid(pid);
-    if(id==-1)
-    {
-        printf("\tgetsid of pid %d is error,because %s\n",pid,strerror(errno));
-    }else
-    {
-        printf("\tsession_id of pid %d is %d\n",pid,id);
-        test_getpgid(id);
-    }
-}
-void test_setsid()
-{
-    pid_t id;
-    id=setsid();
-    if(id==-1)
-    {
-        printf("\tsetsid error,because %s\n",strerror(errno));
-    }else
-    {
-        printf("\tsetsid ok, session id is %d\n",id);
-        test_getpgid(id);
-    }
-}
-void child()
-{
-    printf("In parent:pid is %d,ppid is %d\n",getpid(),getppid());
-    pid_t id;
-    id=vfork();
-    if(id==0)
-    {//child
-        printf("In child:\n");
-        printf("\tpid is %d,ppid is %d\n",getpid(),getppid());
-        printf("\tBefore setsid:\n");
-        test_getsid(getpid());
-        printf("\tAfter setsid:\n");
-        test_setsid();
-        _exit(0);
-    }else
-    {
-        printf("In parent:\n");
-        test_getsid(id);
-    }
-}
-int main(int argc, char *argv[])
-{
-    printf("Get init process's session id:\n");
-    test_getsid(1);
-    printf("In parent,get session id:\n");
-    test_getsid(getpid());
-    child();
-    return 0;
+    M_TRACE("---------  Begin test_getsid_setsid()  ---------\n");
+    create_child();
+    // 只有父进程能到达此处
+    check_waitpid();
+    print_pid();
+    print_parent_pid();
+    My_getpgid(0);
+    My_getsid(0);
+    My_setsid();
+    My_getsid(0);
+    M_TRACE("---------  End test_getsid_setsid()  ---------\n\n");
 }
 	```
   	![session_id](../imgs/progress_relations/session_id.JPG)
 	可以看到：
-	- `init`进程：进程ID等于该进程组的组ID等于所在会话的会话ID
-	- 本进程`A`位于父进程`P`创建的会话中，会话ID等于父进程的进程ID也等于进程组的ID
-	- 本进程`A`创建的子进程`C`，默认情况下位于父进程`A`所属的会话中
-	- 一旦子进程`C`以自己的`PID`调用了`setsid()`，则相当于新创建了一个会话
-		- 新会话ID等于`C`的进程ID
-		- 同时也创建了一个新进程组，新进程组的组ID也等于`C`的进程ID
+	- 子进程的进程ID为 3389，父进程的进程ID为 3388
+	- 刚开始，子进程和父进程为一个进程组。父进程为组长进程，进程组ID为 3388 。 会话ID为 3387
+	- 对子进程调用`setsid` 之后：子进程独立成为一个进程组，子进程为组长进程，构成一个新的会话。进程组ID和会话ID都是 3389
+	- 对父进程调用`setsid` 之后：由于父进程是个组长进程，则函数调用失败，并没有创建一个新的会话。
 
 ## 作业控制
 
@@ -346,122 +228,33 @@ int main(int argc, char *argv[])
 
 	注意会话ID不一定等于前台进程组的组ID。对于一个会话，会话ID通常不变（前提是没有函数主动设置它）；但是前台进程组进程由于作业调度会经常发生变化
 
-4. 示例：
+4. 示例：在`main`函数中调用`test_tcgetpgrp_tcsetpgrp`函数：
+
 
 	```
-#include <stdio.h>
-#include<unistd.h>
-#include<termios.h>
-#include<string.h>
-#include<errno.h>
-void print_process_group_id(pid_t pid)
+void test_tcgetpgrp_tcsetpgrp()
 {
-    pid_t gid;
-    gid=getpgid(pid);
-    if(gid==-1)
-    {
-        printf("\tgetpgid of pid %d is error,because %s\n",pid,strerror(errno));
-    }else
-    {
-        printf("\tprogress_group_id  of pid %d is %d\n",pid,gid);
-    }
-}
-void print_sid(pid_t pid)
-{
-    pid_t id;
-    id=getsid(pid);
-    if(id==-1)
-    {
-        printf("\tgetsid of pid %d is error,because %s\n",pid,strerror(errno));
-    }else
-    {
-        printf("\tsession_id of pid %d is %d\n",pid,id);
-    }
-}
-void print_session_id_with_tcgetsid(int fd)
-{
-   pid_t id;
-   id=tcgetsid(fd);
-   if(id==-1)
-   {
-       printf("\ttcgetsid of fd %d  error,because %s\n",fd,strerror(errno));
-   }else
-   {
-        printf("\ttcgetsid of fd %d  is %d\n",fd,id);
-   }
-}
-void print_session_id_with_tcgetpgrp(int fd)
-{
-   pid_t id;
-   id=tcgetpgrp(fd);
-   if(id==-1)
-   {
-       printf("\ttcgetpgrp of fd %d  error,because %s\n",fd,strerror(errno));
-   }else
-   {
-        printf("\ttcgetpgrp of fd %d  is %d\n",fd,id);
-   }
-}
-void print_relations()
-{
-    pid_t id=getpid();
-    pid_t parent_id=getppid();
-    printf("\t process id is:%d\n",id);
-    printf("\t parent process id is %d\n",parent_id);
-    print_process_group_id(id);
-    print_process_group_id(parent_id);
-    print_sid(id);
-    print_sid(parent_id);
-    print_session_id_with_tcgetpgrp(0);
-    print_session_id_with_tcgetsid(0);
-}
-void test_tcsetpgrp(int fd,pid_t pgid)
-{
-    if(tcsetpgrp(fd,pgid)==-1)
-    {
-        printf("\ttcsetpgrp of fd %d with pid %d is error,because %
-		s\n",fd,pgid,strerror(errno));
-    }else
-    {
-        printf("\ttcsetpgrp of fd %d with pid %d is ok\n",fd,pgid);
-        print_relations();
-    }
-}
-void child()
-{
-    if (vfork()==0)
-    {//child
-        printf("In child:\nBefore tcsetpgrp:\n");
-        print_relations();
-        printf("Now tcsetpgrp:\n");
-        test_tcsetpgrp(0,getpid());
-        _exit(0);
-   }
-}
-int main(int argc, char *argv[])
-{
-    printf("In parent:\nBefore tcsetpgrp:\n");
-    print_relations();
-    printf("Now tcsetpgrp:\n");
-    test_tcsetpgrp(0,getpid());
-    child();
-    return 0;
+    M_TRACE("---------  Begin test_tcgetpgrp_tcsetpgrp()  ---------\n");
+    create_child();
+    // 只有父进程能到达此处
+    check_waitpid();
+    print_pid();
+    print_parent_pid();
+    My_getpgrp(); // 父进程自己
+    M_TRACE("---------  End test_tcgetpgrp_tcsetpgrp()  ---------\n\n");
 }
 	```
   	![control_terminal](../imgs/progress_relations/control_terminal.JPG) 
 	可以看到：
-	- 在父进程中：
-		- 父进程进程`ID`为 3193 ，进程组ID为 3193， 会话ID为 3192
-		- 祖父进程的进程`ID`为 3192，进程组ID为 3192， 会话ID为 3192
-		- 对父进程的文件描述符0，其`tcgetpgrp`为 3193，是前台进程组的组ID
-		- 对父进程的文件描述符0，其`tcgetsid`为 3192，是会话ID
-		- 对父进程的文件描述符0， 设置`tcsetpgrp`为自身的进程ID，则没有任何变化
-	- 在子进程中：
-		- 父进程进程`ID`为 3193 ，进程组ID为 3193， 会话ID为 3192
-		- 子进程的进程`ID`为 3194，进程组ID为 3193， 会话ID为 3192
-		- 对子进程的文件描述符0，其`tcgetpgrp`为 3193，是前台进程组的组ID
-		- 对子进程的文件描述符0，其`tcgetsid`为 3192，是会话ID
-		- 对子进程的文件描述符0， 设置`tcsetpgrp`为自身的进程ID，则`tcgetgprp`现在返回值为 3194
+	- 子进程ID为 3860，父进程ID为 3859， 父进程的父进程ID为 3858
+	- 子进程、父进程都在进程组中，组ID为 3859.该进程组在一个会话中，会话ID为 3858
+	- 标准输出对应的终端（就是标准终端），使用它的会话的ID为 3858.通过`tcgetsid`获取
+	- 标准终端对应的会话的前台进程组的ID是 3859，通过`tcgetpgrp`获取
+	- 当设置标准终端对应的会话的前台进程组为 3857 时，失败。因为进程 3857 不在当前的进程继承体系中
+	- 当设置标准终端对应的会话的前台进程组为  3858 时，执行成功。此时：
+		- 标准终端对应的会话的前台进程组的ID是 3858
+		- 子进程所属的进程组不变
+		-  标准输出对应的终端（就是标准终端），使用它的会话的ID 不变
 
 5. 作业控制：运行在一个终端上启动多个作业，它控制哪个作业可以访问终端以及那些作业在后台运行
 	- 一个作业是一个进程组。该进程组的进程协同完成一个任务

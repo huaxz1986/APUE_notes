@@ -2,7 +2,7 @@
 
 ## 一、打开、创建文件、关闭文件
 
-1. **文件描述符**：一个非负整数，范围是`0~OPEN_MAX-1`。内核用它来标识进程正在访问的文件。当进程创建时，默认为它打开了3个文件描述符，它们都链接向终端：
+1.  文件描述符 ：一个非负整数，范围是`0~OPEN_MAX-1`。内核用它来标识进程正在访问的文件。当进程创建时，默认为它打开了3个文件描述符，它们都链接向终端：
 	- 0： 标准输入
 	- 1： 标准输出
 	- 2： 标准错误输出
@@ -89,88 +89,36 @@
 	- 它以只写方式打开，因此若要读取该文件，则必须先关闭，然后重新以读方式打开。
 	- 若文件已存在则将文件截断为0。
 
-4. 打开和创建文件的测试：
+4. 打开和创建文件的测试。在 `main`函数中调用`test_open_creat()`函数：
 
 	```
-	#include <stdio.h>
-	#include<fcntl.h>
-	#include<string.h>
-	#include<errno.h>
-	void output_message(int ok,const char * action,const char * path)
-	{
-    	if(ok==-1)
-  	  {
- 	       printf("\t%s %s failed!\n",action,path);
- 	       fprintf(stderr,"\tBecause:EACCESS:%s\n",strerror(EACCES));
-	    }
- 	   else
-   	     printf("\t%s %s success!\n",action,path);
-	}
-
-	void my_open(const char* path)
-	{
-	    int ok=0;
-	    ok=open(path,O_RDONLY); //open file
-	    output_message(ok,"open ",path);
-	}
-	void my_openat(int fd,const char* path)
-	{
-  	  int ok=0;
- 	   ok=openat(fd,path,O_RDONLY);//open a file
- 	   output_message(ok,"openat ",path);
-	}
-	void my_creat(const char* path)
-	{
- 	   int ok=0;
- 	   ok=creat(path,S_IWUSR|S_IWUSR);//create a file
- 	   output_message(ok,"creat ",path);
-
-	}
-	void my_open_creat(const char* path)
-	{
- 	   int ok=0;
-  	  ok=open(path,O_RDONLY|O_CREAT,S_IWUSR|S_IWUSR);
-    output_message(ok,"open creat ",path);
-	}
-	void my_open_creat_excl(const char* path)
-	{
-   	 int ok=0;
-   	 ok=open(path,O_RDONLY|O_CREAT|O_EXCL,S_IWUSR|S_IWUSR);//open a file,creat excl option
-  	  output_message(ok,"open creat excl ",path);
-	}
-	int main(int argc, char *argv[])
-	{
- 	   int fd;
- 	   printf("test open:\n");
- 	   my_open("/home/huaxz1986/test/exist_op");
- 	   my_open("/home/huaxz1986/test/no_exist_op");
- 	   printf("test openat:\n");
-	   fd=open("/home/huaxz1986/test/",O_RDONLY);
-	   my_openat(fd,"exist_opat");
-	   my_openat(fd,"no_exist_opat");
-	   printf("test creat:\n");
- 	   my_creat("/home/huaxz1986/test/exist_crt");
-	   my_creat("/home/huaxz1986/test/no_exist_crt");
-	   printf("test open creat:\n");
-	   my_open_creat("/home/huaxz1986/test/exist_opcrt");
-	   my_open_creat("/home/huaxz1986/test/no_exist_opcrt");
-	   printf("test open creat excl:\n");
-	   my_open_creat_excl("/home/huaxz1986/test/exist_opcrtecl");
-	   my_open_creat_excl("/home/huaxz1986/test/no_exist_opcrtecl");
- 	   return 0;
-	}
+void test_open_creat()
+{
+    M_TRACE("---------  Begin test_open_creat()  ---------\n");
+    My_open("./test1",O_RDWR); // 一个存在的文件
+    My_open("./no_such_file1",O_RDWR);  // 一个不存在的文件
+    My_open_with_mode("./test2",O_RDWR,S_IRUSR|S_IWUSR); // 一个存在的文件
+    My_open_with_mode("./no_such_file2",O_RDWR,S_IRUSR|S_IWUSR); // 一个不存在的文件
+    My_open_with_mode("./test3",O_RDWR|O_CREAT,S_IRUSR|S_IWUSR); // 一个存在的文件 ，带 O_CREAT 标志
+    My_open_with_mode("./no_such_file3",O_RDWR|O_CREAT,S_IRUSR|S_IWUSR); // 一个不存在的文件 ，带 O_CREAT 标志
+    My_open_with_mode("./test4",O_RDWR|O_CREAT|O_EXCL,S_IRUSR|S_IWUSR); // 一个存在的文件 ，带 O_CREAT|O_EXCL 标志
+    My_open_with_mode("./no_such_file4",O_RDWR|O_CREAT|O_EXCL,S_IRUSR|S_IWUSR); // 一个不存在的文件，带 O_CREAT|O_EXCL 标志
+    My_creat("./test5",S_IRUSR|S_IWUSR); // 一个存在的文件
+    My_creat("./no_such_file5",S_IRUSR|S_IWUSR); // 一个不存在的文件
+    M_TRACE("---------  End test_open_creat()  ---------\n\n");
+}
 	```
   	![open_creat](../imgs/file_IO/open_creat.JPG) 
 
 	可以看到：
 
 	- 若文件存在：
-		- 简单的`open()`和`openat()`成功打开
+		- 简单的`open()`成功打开
 		- 带`O_CREAT`选项的`open()`成功打开
 		- 带`O_CREAT|O_EXCL`选项的`open()`打开失败
 		- `creat()`成功打开并且将文件截断为0
 	- 若文件不存在：
-		- 简单的`open()`和`openat()`打开失败
+		- 简单的`open()`打开失败
 		- 带`O_CREAT`选项的`open()`成功创建文件，打开并且将文件截断为0
 		- 带`O_CREAT|O_EXCL`选项的`open()`成功创建文件，打开并且将文件截断为0
 		- `creat()`成功创建文件，打开并且将文件截断为0
@@ -263,82 +211,35 @@
 
 	对于普通文件，写操作从文件的当前偏移量处开始。如果打开文件时指定了`O_APPEND`选项，则每次写操作之前，都会将文件偏移量设置在文件的当前结尾处。在一次成功写之后，该文件偏移量增加实际写的字节数。
 
-4. 测试`lseek,read,write`：
+4. 测试`lseek,read,write`。在 `main`函数中调用 `test_lseek_read_write`函数：
 
 	```
-	#include <stdio.h>
-	#include<unistd.h>
-	#include<fcntl.h>
-	#include<string.h>
-	#include<errno.h>
-	void test_read(int fd,void* read_buffer,ssize_t len)
-	{
-  	  int read_num;
- 	   read_num=read(fd,read_buffer,len);
- 	   if(read_num<0)
-	    {
- 	       printf("\tread error!\n");
-	        fprintf(stderr,"\tBeause:%s\n",strerror(errno));
-	    }else
-	    {
- 	       printf("\tread num:%d(expexted read :%d)\n",read_num,len);
- 	   }
-	}
-	void test_write(int fd,void*write_buffer,ssize_t len)
-	{
-  	  int write_num;
- 	   write_num=write(fd,write_buffer,len);
- 	   if(write_num<0)
- 	   {
-  	      printf("\twrite error!\n");
-  	      fprintf(stderr,"\tBeause:%s\n",strerror(errno));
-	    }else
- 	   {
-  	      printf("\twrite num:%d(expexted write :%d)\n",write_num,len);
- 	   }
-	}
+void test_lseek_read_write()
+{
+    M_TRACE("---------  Begin test_lseek_read_write()  ---------\n");
+    int fd=My_open_with_mode("test",O_RDWR|O_TRUNC|O_CREAT,S_IRUSR|S_IWUSR);  // 读写打开，并截断
+    if(-1==fd)  return; // 文件打开失败
+    char read_buffer[20];
+    char write_buffer[10];
 
-	void test_lseek(int fd,off_t offset,int loc)
-	{
-  	  int seek_ok;
- 	   seek_ok=lseek(fd,offset,loc);
- 	   if(-1==seek_ok)
- 	   {
-  	      printf("\tlseek error!\n");
-  	      fprintf(stderr,"\tBeause:%s\n",strerror(errno));
-	    }else
- 	   {
-	        printf("\tlseek ok.New offset is:%d\n",seek_ok);
-	    }
-	}
+    strcpy(write_buffer,"123456789"); // write_buffer 填充数字
 
-	int main(int argc, char *argv[])
-	{
- 	   int fd;
-	    char read_buffer[20];
- 	   char write_buffer[10];
- 	   strcpy(write_buffer,"123456789");
+    My_read(fd,read_buffer,20); // 读文件，期望读 20 个字节
+    My_write(fd,write_buffer,10);// 写文件，期望写 10 个字节
+    My_read(fd,read_buffer,20);// 读文件，期望读 20 个字节
+    My_lseek(fd,0,SEEK_SET);// 定位文件到头部
+    My_read(fd,read_buffer,20);// 读文件，期望读 20 个字节
+    My_lseek(fd,10,SEEK_END);// 定位文件到尾部之后的 10 个字节
+    My_read(fd,read_buffer,20);// 读文件，期望读 20 个字节
+    My_write(fd,write_buffer,10);// 写文件，期望写 10 个字节
+    My_read(fd,read_buffer,20);// 读文件，期望读 20 个字节
+    My_lseek(fd,0,SEEK_SET);// 定位文件到头部
+    My_read(fd,read_buffer,20);// 读文件，期望读 20 个字节
+    My_read(fd,read_buffer,20);// 读文件，期望读 20 个字节
+    close(fd);
+    M_TRACE("---------  End test_lseek_read_write()  ---------\n\n");
 
-	    fd=openat(AT_FDCWD,"test",O_RDWR|O_TRUNC);
-
- 	   printf("File is empty:\n");
-	    test_read(fd,read_buffer,20);
- 	   test_write(fd,write_buffer,10);
- 	   test_read(fd,read_buffer,20);
- 	   printf("Lseek to begin:\n");
-  	  test_lseek(fd,0,SEEK_SET);
- 	   test_read(fd,read_buffer,20);
- 	   printf("Lseek to end+10:\n");
-	    test_lseek(fd,10,SEEK_END);
- 	   test_read(fd,read_buffer,20);
- 	   test_write(fd,write_buffer,10);
- 	   test_read(fd,read_buffer,20);
- 	   printf("Lseek to begin:\n");
- 	   test_lseek(fd,0,SEEK_SET);
- 	   test_read(fd,read_buffer,20);
- 	   test_read(fd,read_buffer,20);
- 	   return 0;
-	}
+}
 	```
  	 ![lseek_read_write](../imgs/file_IO/lseek_read_write.JPG) 
 
@@ -353,7 +254,7 @@
 	- 写入文件10个字节
 	- 读取文件。此时当前文件偏移被`write`置于文件结尾。此时读取0个字节
 	- 执行`lseek`将当前文件偏移量重置到文件开头，返回0（新的文件偏移量）
-	- 读取文件，读取20个字节（因为文件结尾的偏移是30个字节）
+	- 读取文件，读取20个字节（因为文件结尾的偏移是30个字节）。空洞部分读取的结果都是 0 
 	- 读取文件，只能读取10个字节（因为文件结尾的偏移是30个字节）
 
 
@@ -423,6 +324,29 @@
 
 	调用`pread`相当于先调用`lseek`再调用`read`.但是调用`pread`时，无法中断其定位和读操作，并且不更新当前文件偏移量；调用`pwrite`相当于先调用`lseek`再调用`write`.但是调用`pwrite`时，无法中断其定位和写操作，并且不更新当前文件偏移量
 
+	示例：在 `main`函数中调用 `test_pread_pwrite` 函数：
+
+	```
+void test_pread_pwrite()
+{
+    M_TRACE("---------  Begin test_pread_pwrite()  ---------\n");
+    int fd=My_open_with_mode("test",O_RDWR|O_TRUNC|O_CREAT,S_IRUSR|S_IWUSR);  // 读写打开，并截断
+    if(-1==fd)  return; // 文件打开失败
+    char read_buffer[20];
+    char write_buffer[20];
+    strcpy(write_buffer,"123456789"); // write_buffer 填充数字
+
+    // 写文件，期望写 10 个字节
+    My_write(fd,write_buffer,10);
+    print_current_offset(fd);
+    My_pread(fd,read_buffer,5,0 );// 读文件，期望读  5 个字节,从 偏移为 0 开始
+    print_current_offset(fd);
+    My_pwrite(fd,write_buffer,10,8);// 写文件，期望写 10 个字节，从 偏移为 8 开始
+    print_current_offset(fd);
+    close(fd);
+    M_TRACE("---------  End test_pread_pwrite()  ---------\n\n");
+}
+	```
  	 ![pread_pwrite](../imgs/file_IO/pread_pwrite.JPG) 
 
 4. `dup/dup2`：复制一个现有的文件描述符：
@@ -436,7 +360,7 @@
 	- 参数：
 		- `fd`：被复制的文件描述符（已被打开）
 		- `fd2`：指定的新的文件描述符（待生成）
-	-返回值：
+	- 返回值：
 		- 成功： 返回新的文件描述符
 		- 失败： 返回 -1
 
@@ -447,6 +371,23 @@
 	- 如果 `fd2`等于`fd`，则直接返回`fd2`（也等于`fd`），而不作任何操作
 
 	任何情况下，这个返回的新的文明描述符与参数`fd`共享同一个文件表项（因此文件状态标志以及文件偏移量都会共享）。	任何情况下，这个返回的新的文明描述符的`close-on-exec`标志总是被清除
+
+	示例：在 `main`函数中调用`test_dup_dup2`函数:
+
+	```
+void test_dup_dup2()
+{
+    M_TRACE("---------  Begin test_dup_dup2()  ---------\n");
+    My_dup(0);  // fd 0 已经被打开的
+    My_dup(100); // fd 100 未被打开
+    My_dup2(0,0);  // fd 0 已经被打开的
+    My_dup2(100,100);  // fd 100 未被打开
+    My_dup2(0,100); // fd 0 已经被打开的, fd 100 未被打开
+    My_dup2(101,0); // fd 0 已经被打开的, fd 100 未被打开
+    M_TRACE("---------  End test_dup_dup2()  ---------\n\n");
+}
+
+	```
 
   	![dup_dup2](../imgs/file_IO/dup_dup2.JPG) 
 
@@ -484,13 +425,11 @@
 	- 参数：
 		- `fd`：已打开文件的描述符
 		- `cmd`：有下列若干种：
-			- `F_DUPEF`常量：复制文件描述符 `fd`。新文件描述符作为函数值返回。它是尚未打开的个描述符中大于或等于`arg`中的最小值。新文件描述符与`fd`共享同一个文件表项，但是新描述符有自己的一套文件描述符标志，其中`FD_CLOEXEC`文件描述符标志被清除
+			- `F_DUPFD`常量：复制文件描述符 `fd`。新文件描述符作为函数值返回。它是尚未打开的文件描述符中大于或等于`arg`中的最小值。新文件描述符与`fd`共享同一个文件表项，但是新描述符有自己的一套文件描述符标志，其中`FD_CLOEXEC`文件描述符标志被清除
 			- `F_DUPFD_CLOEXEC`常量：复制文件描述符。新文件描述符作为函数值返回。它是尚未打开的个描述符中大于或等于`arg`中的最小值。新文件描述符与`fd`共享同一个文件表项，但是新描述符有自己的一套文件描述符标志，其中`FD_CLOEXEC`文件描述符标志被设置
 			- `F_GETFD`常量：对应于`fd`的文件描述符标志作为函数值返回。当前只定义了一个文件描述符标志`FD_CLOEXEC`
 			- `F_SETFD`常量：设置`fd`的文件描述符标志为`arg`
-			- `F_GETFL`常量：返回`fd`的文件状态标志。文件状态标志必须首先用屏蔽字 `O_ACCMODE` 取得访问方式位，
-		然后与`O_RDONLY`、`O_WRONLY`、`O_RDWR`、`O_EXEC`、`O_SEARCH`比较
-		（这5个值互斥，且并不是各占1位）。剩下的还有：`O_APPEND`、`O_NONBLOCK`、`O_SYNC`
+			- `F_GETFL`常量：返回`fd`的文件状态标志。文件状态标志必须首先用屏蔽字 `O_ACCMODE` 取得访问方式位，然后与`O_RDONLY`、`O_WRONLY`、`O_RDWR`、`O_EXEC`、`O_SEARCH`比较（这5个值互斥，且并不是各占1位）。剩下的还有：`O_APPEND`、`O_NONBLOCK`、`O_SYNC`
 		、`O_DSYNC`、`O_RSYNC`、`F_ASYNC`、`O_ASYNC`
 			- `F_SETFL`常量：设置`fd`的文件状态标志为 `arg`。可以更改的标志是：
 	  `O_APPEND`、`O_NONBLOCK`、`O_SYNC`、`O_DSYNC`、`O_RSYNC`、`F_ASYNC`、`O_ASYNC`
@@ -502,136 +441,40 @@
 	- 返回值：
 		- 成功： 依赖于具体的命令
 		- 失败： 返回 -1
+
+	示例：在 `main`函数中调用`test_fcntl()`函数:
 	
 	```
-	#include <stdio.h>
-	#include<fcntl.h>
-	#include<unistd.h>
-	#include<string.h>
-	#include<errno.h>
-	void print_error(int fd,const char* action,int result)
-	{
- 	   if(result==-1)
- 	   {
- 	       printf("\t %s on fd(%d) error:beause %s!\n",action,fd,strerror(errno));
- 	   }
-	}
-	
-	void test_get_fd(int fd)
-	{
-	    printf("\tget_fd on fd(%d):",fd);
-	    int result;
-	    result=fcntl(fd,F_GETFD);
-	    print_error(fd,"F_GETFD",result);
-	    if(result!=-1)
- 	       printf("return:%d !\n",result);
-
-	}
-	void test_set_fd(int fd, int flag)
-	{
- 	   printf("\tset_fd on fd(%d) of flag(%d):",fd,flag);
-  	  int result;
- 	   result=fcntl(fd,F_SETFD,flag);
-  	  print_error(fd,"F_SETFD",result);
-  	  if(result!=-1)
-    	    printf("set_fd ok !\n");
-	}
-	int test_dup_fd(int fd,int min_fd)
-	{
-	    printf("\tdup_fd on fd(%d),set min_fd(%d),:",fd,min_fd);
- 	   int result;
- 	   result=fcntl(fd,F_DUPFD,min_fd);
- 	   print_error(fd,"F_DUPFD",result);
-  	  if(result!=-1)
-    	    printf("return:%d !\n",result);
-  	  return result;
-	}
-	int test_dup_exec_fd(int fd,int min_fd)
-	{
- 	   printf("\tdup_exec_fd on fd(%d),set min_fd(%d),:",fd,min_fd);
-  	  int result;
-  	  result=fcntl(fd,F_DUPFD_CLOEXEC,min_fd);
-  	  print_error(fd,"F_DUPFD_CLOEXEC",result);
-  	  if(result!=-1)
-   	     printf("return:%d !\n",result);
-  	  return result;
-	}
-	void test_get_fl(int fd)
-	{
- 	   printf("\tget_fl on fd(%d):",fd);
- 	   int result;
-  	  result=fcntl(fd,F_GETFL);
-  	  print_error(fd,"F_GETFL",result);
-  	  if(result!=-1)
-  	  {
-   	     printf("F_GETFL on fd(%d) has ",fd);
-    	    if(result&O_APPEND) printf("\tO_APPEND;");
-    	    if(result&O_NONBLOCK) printf("\tO_NONBLOCK;");
-    	    if(result&O_SYNC) printf("\tO_SYNC;");
-    	    if(result&O_DSYNC) printf("\tO_DSYNC;");
-    	    if(result&O_RSYNC) printf("\tO_RSYNC;");
-    	    if(result&O_FSYNC) printf("\tO_FSYNC;");
-    	    if(result&O_ASYNC) printf("\thas O_ASYNC;");
-    	    if((result&O_ACCMODE)==O_RDONLY)printf("\tO_RDONLY;");
-     	   if((result&O_ACCMODE)==O_WRONLY)printf("\thas O_WRONLY;");
-     	   if((result&O_ACCMODE)==O_RDWR)printf("\tO_RDWR;");
-     	   printf("\n");
-  	  }
-	}
-	void test_set_fl(int fd,int flag)
-	{
-	    printf("\tset_fl on fd(%d) of flag(%d):",fd,flag);
- 	   int result;
- 	   result=fcntl(fd,F_SETFL,flag);
-  	  print_error(fd,"F_SETFL",result);
- 	   if(result!=-1)
-   	     printf("set_fl ok !\n");
-	}
-	void test_get_own(int fd)
-	{
- 	   printf("\tget_own on fd(%d):",fd);
-  	  int result;
-  	  result=fcntl(fd,F_GETOWN);
-  	  print_error(fd,"F_GETOWN",result);
-  	  if(result!=-1)
-     		   printf("return:%d !\n",result);
-	}
-	void test_set_own(int fd,int pid)
-	{
-	    printf("\tset_own on fd(%d) of pid(%d):",fd,pid);
- 	   int result;
- 	   result=fcntl(fd,F_SETOWN,pid);
- 	   print_error(fd,"F_SETOWN",result);
-  	  if(result!=-1)
-   		     printf("set_own ok !\n");
-	}
-	int main(int argc, char *argv[])
-	{
-	    int fd;
-  	  fd=openat(AT_FDCWD,"test.txt",O_WRONLY|O_CREAT,S_IRUSR|S_IWUSR);
-  	  printf("Test dup:\n");
-  	  test_get_fd(test_dup_fd(fd,10));
-  	  test_get_fd(test_dup_fd(fd,0));
-  	  test_get_fd(test_dup_exec_fd(fd,10));
-  	  test_get_fd(test_dup_exec_fd(fd,0));
-   	 printf("Test set_get_fd:\n");
-   	 test_get_fd(fd);
-  	  test_set_fd(fd,~FD_CLOEXEC);
-  	  test_get_fd(fd);
-  	  test_set_fd(fd,FD_CLOEXEC);
-  	  test_get_fd(fd);
-  	  printf("Test set_get_fl:\n");
-  	  test_get_fl(fd);
-    	test_set_fl(fd,O_RDWR);
-   	 test_get_fl(fd);
-    	test_set_fl(fd,O_RDONLY|O_NONBLOCK);
-   	 test_get_fl(fd);
-   	 printf("Test set_get own:\n");
-   	 test_get_own(fd);
-   	 test_set_fl(fd,1);
-   	 test_get_own(fd);
-    	return 0;
-	}
+void test_fcntl()
+{
+    M_TRACE("---------  Begin test_fcntl()  ---------\n");
+    int fd=openat(AT_FDCWD,"test.txt",O_WRONLY|O_CREAT,S_IRUSR|S_IWUSR);;
+    if(-1==fd) // 打开文件失败
+        return ;
+    //测试 My_fcntl_GETFD 和 My_fcntl_DUPFD、My_fcntl_DUPFD_CLOEXEC
+    My_fcntl_GETFD(My_fcntl_DUPFD(fd,10));
+    My_fcntl_GETFD(My_fcntl_DUPFD(fd,0));
+    My_fcntl_GETFD(My_fcntl_DUPFD_CLOEXEC(fd,10));
+    My_fcntl_GETFD(My_fcntl_DUPFD_CLOEXEC(fd,0));
+    // 测试 My_fcntl_GETFD、My_fcntl_SETFD
+    My_fcntl_GETFD(fd);
+    My_fcntl_SETFD(fd,~FD_CLOEXEC);
+    My_fcntl_GETFD(fd);
+    My_fcntl_SETFD(fd,FD_CLOEXEC);
+    My_fcntl_GETFD(fd);
+    // 测试 My_fcntl_GETFL、My_fcntl_SETFL
+    print_fl(fd,My_fcntl_GETFL(fd));
+    My_fcntl_SETFL(fd,O_RDWR);
+    print_fl(fd,My_fcntl_GETFL(fd));
+    My_fcntl_SETFL(fd,O_RDONLY|O_NONBLOCK);
+    print_fl(fd,My_fcntl_GETFL(fd));
+    // 测试 My_fcntl_GETOWN、My_fcntl_SETOWN
+    My_fcntl_GETOWN(fd);
+    My_fcntl_SETOWN(fd,1);
+    My_fcntl_GETOWN(fd);
+    close(fd);
+    M_TRACE("---------  End test_fcntl()  ---------\n\n");
+}
 	```
 
  	 ![fcntl](../imgs/file_IO/fcntl.JPG) 

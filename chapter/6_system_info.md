@@ -293,179 +293,29 @@
 
 	> `hostname`命令可以获取和设置主机名
 
-14. 示例：
+14. 示例：在`main`函数中调用`test_system_file`函数：
 	
 	```
-	#include <stdio.h>
-	#include<pwd.h>
-	#include<shadow.h>
-	#include<grp.h>
-	#include<string.h>
-	#include<errno.h>
-	#include<netdb.h>
-	#include<unistd.h>
-
-	#define NGROUPS_MAX  65536
-	//############ /etc/passwd #############
-	void print_passwd_struct(struct passwd *pwd)
-	{
-    	printf("struct passwd：");
-    	printf("\tuser name：%s;",pwd->pw_name);
-    	printf("\tuser password：%s;",pwd->pw_passwd);
-    	printf("\tuser id：%d;",pwd->pw_uid);
-    	printf("\tuser gid：%d",pwd->pw_gid);
-    	printf("\tinitial work dir：%s;",pwd->pw_dir);
-    	printf("\tinitial shell：%s\n",pwd->pw_shell);
-	}
-	void print_etc_passwd_file()
-	{
-    	struct passwd * entry;
-    	errno=0;
-
-    	while ((entry=getpwent())!=NULL)
-    	{
-        	print_passwd_struct(entry);
-    	}
-    	if(errno!=0)
-    	{
-        	printf("getpwent failed ,because %s \n",strerror(errno));
-    	}
-    	endpwent();
-	}
-	//############ /etc/shadow ############
-	void print_spwd_struct(struct spwd *swd)
-	{
-   	 printf("struct spwd：");
-   	 printf("\tuser name：%s;",swd->sp_namp);
-    	printf("\tuser encrypt password：%s;",swd->sp_pwdp);
-    	printf("\tsince last changed：%d;",swd->sp_lstchg);
-    	printf("\tnext changed after：%d;",swd->sp_min);
-   	 printf("\tnext change before：%d;",swd->sp_max);
-    	printf("\twarn after：%d;",swd->sp_warn);
-    	printf("\tinactive after：%d;",swd->sp_inact);
-    	printf("\texpire after：%d;",swd->sp_expire);
-    	printf("\tunuse：%d\n",swd->sp_flag);
-	}
-	void print_etc_shaddow_file()
-	{
-   	 struct spwd * entry;
-    	errno=0;
-
-    	while ((entry=getspent())!=NULL)
-    	{
-        	print_spwd_struct(entry);
-    	}
-    	if(errno!=0)
-    	{
-        	printf("getspent failed ,because %s \n",strerror(errno));
-    	}
-    	endspent();
-	}
-	//########### /etc/group ###########
-	void print_group_struct(struct group *grp)
-	{
-    	printf("struct group：");
-    	printf("\tgroup name：%s;",grp->gr_name);
-    	printf("\tgroup password：%s;",grp->gr_passwd);
-    	printf("\tgroup id：%d;",grp->gr_gid);
-    	printf("\tusers in group：");
-    	char **item=grp->gr_mem;
-    	while(*item)
-    	{
-        	printf("%s\t",*item);
-        	item++;
-    	}
-    	printf("\n");
-	}
-	void print_etc_group_file()
-	{
-   	struct group * entry;
-    	errno=0;
-
-    	while ((entry=getgrent())!=NULL)
-    	{
-       	 print_group_struct(entry);
-    	}
-    	if(errno!=0)
-    	{
-        	printf("getgrent failed ,because %s \n",strerror(errno));
-    	}
-    	endgrent();
-	}
-	//########## attach groups ###########
-	void print_attach_groups()
-	{
-   	 printf("Attach groups is ：");
-    	gid_t grouplist[NGROUPS_MAX];
-    	int num;
-    	num=getgroups(NGROUPS_MAX,grouplist);
-    	if(num==-1)
-    	{
-        	printf("print_attach_groups failed ,because %s \n",strerror(errno));
-    	}else
-    	{
-        	for(int i=0;i<num;i++)
-            	printf("%d\t",grouplist[i]);
-        	printf("\n");
-
-    	}
-	}
-	//########### /etc/hosts ########
-	void print_struct_host(struct hostent *hst)
-	{
-    	printf("struct hostent：");
-    	printf("\thost name：%s;",hst->h_name);
-    	printf("\thost h_aliases：");
-    	char **item=hst->h_aliases;
-    	while(*item!=NULL)
-    	{
-        	printf("%s,\t");
-        	item++;
-    	}
-    	printf(";");
-    	printf("\thost address type：%d;",hst->h_addrtype);
-    	printf("\thost address length：%d;",hst->h_length);
-    	printf("\thost address_list：");
-    	item=hst->h_addr_list;
-    	while(*item!=NULL)
-    	{
-       	 printf("%s\t,",*item);
-        	item++;
-    	}
-   	 	printf("\n");
-	}
-	void print_etc_host_file()
-	{
-    	struct hostent * entry;
-    	errno=0;
-
-    	while ((entry=gethostent())!=NULL)
-    	{
-        	print_struct_host(entry);
-    	}
-    	if(errno!=0)
-    	{
-        	printf("gethostent failed ,because %s \n",strerror(errno));
-    	}
-    	endhostent();
-	}
-
-	int main(int argc, char *argv[])
-	{
-    	printf("Print /etc/passwd：\n");
-    	print_etc_passwd_file();
-   	 printf("Print /etc/shadow：\n");
-   	 print_etc_shaddow_file();
-    	printf("Print /etc/group：\n");
-   	 print_etc_group_file();
-   	 printf("Print /etc/hosts：\n");
-   	 print_etc_host_file();
-    	printf("Print attach groups：\n");
-    	print_attach_groups();
-
-    	return 0;
-	}
+void test_system_file()
+{
+    M_TRACE("---------  Begin test_system_file()  ---------\n");
+    printf("********* test passwd ************\n");
+    _test_passwd();
+    printf("\n\n********* test shadow ************\n");
+    _test_shadow();
+    printf("\n\n********* test group ************\n");
+    _test_group();
+    printf("\n\n********* test attach groups ************\n");
+    _test_attach_groups();
+    printf("\n\n********* test host ************\n");
+    _test_host();
+    M_TRACE("---------  End test_system_file()  ---------\n\n");
+}
 	```
+
+	注意：
+	- `getpwuid`、`getpwnam`、`getgrgid`、`getgrnam`函数失败时，并不会修改`errno`
+
   	![read_system_file](../imgs/system_info/read_system_file.JPG) 
 	
 
@@ -517,7 +367,7 @@
 		- 成功： 返回 0
 		- 失败： 返回 -1
 
-	`clock_getres`函数把参数`tsp`指向的`timespec`结构初始化为与`clock_id`参数对应的始终精度
+	`clock_getres`函数把参数`tsp`指向的`timespec`结构初始化为与`clock_id`参数对应的时钟精度
 
 5. `clock_settime`函数：设置时间
 
@@ -533,7 +383,7 @@
 		- 失败： 返回 -1
 	
 	`clock_settime`函数对特定的时钟设置时间。但是：
-	- 某些始终是不能修改的
+	- 某些时钟是不能修改的
 	- 需要适当的权限来修改时钟值
 
 6. `gettimeofday`函数：更高精度的获取当前时间（但是目前已经弃用）
@@ -680,197 +530,43 @@
 	- `%n`：任何空白
 	- `%t`：任何空白
 
-11. 示例
+11. 示例：在`main`函数中调用`test_times`函数：
 
 	```
-	#include <stdio.h>
-	#include<string.h>
-	#include<errno.h>
-	#include<time.h>
-	#include<sys/time.h>
-	print_struct_timespec(struct timespec*tsp)
-	{
-    	if(tsp==NULL) return;
-    	printf("timespec:<");
-    	printf("seconds:%ld;\t",tsp->tv_sec);
-    	printf("nseconds:%ld",tsp->tv_nsec);
-    	printf(">\n");
-	}
-	print_struct_tm(struct tm *tmp)
-	{
-    	if(tmp==NULL) return;
-    	printf("tm:<");
-    	printf("second:%d;\t",tmp->tm_sec);
-    	printf("miniute:%d;\t",tmp->tm_min);
-    	printf("hour:%d;\t",tmp->tm_hour);
-    	printf("day:%d;\t",tmp->tm_mday);
-    	printf("month:%d;\t",tmp->tm_mon+1);
-    	printf("year:%d;\t",tmp->tm_year+1900);
-    	printf("day of week:%d;\t",tmp->tm_wday);
-    	printf("day of year:%d;\t",tmp->tm_yday+1);
-    	printf("daylight flag:%d",tmp->tm_isdst);
-    	printf(">\n");
-	}
+void test_times()
+{
+    M_TRACE("---------  Begin test_times()  ---------\n");
+    struct timespec tsp_time;
+    struct timeval tvl_time;
+    time_t tm_t;
 
-	void test_time()
-	{
-    	time_t tm;
-    	tm=time(NULL);
-    	if(-1==tm)
-    	{
-        	printf("\ttime error, because %s\n",strerror(errno));
-    	}else
-    	{
-        	printf("\tCurrent time is:%ld\n",tm);
-    	}
-	}
-	void test_clock_gettime()
-	{
-    	int ok;
-    	struct timespec ts;
-    	{
-        	ok=clock_gettime(CLOCK_REALTIME,&ts);
-        	if(-1==ok)
-        	{
-            	printf("\tclock_gettime[CLOCK_REALTIME] error, because %s\n",
-			strerror(errno));
+    My_time(NULL);
 
-        	}else
-        	{
-            	printf("\tclock_gettime[CLOCK_REALTIME]:\t");
-            	print_struct_timespec(&ts);
-       	 }
-    	}
-    	{
-        	ok=clock_gettime(CLOCK_MONOTONIC,&ts);
-        	if(-1==ok)
-        	{
-           	printf("\tclock_gettime[CLOCK_MONOTONIC] error, because %s\n",
-				strerror(errno));
-
-        	}else
-        	{
-            	printf("\tclock_gettime[CLOCK_MONOTONIC]:\t");
-            	print_struct_timespec(&ts);
-       	 }
-    	}
-    	{
-       	 ok=clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&ts);
-        	if(-1==ok)
-        	{
-            	printf("\tclock_gettime[CLOCK_PROCESS_CPUTIME_ID] error, because 
-		%s\n",strerror(errno));
-
-        	}else
-        	{
-           	 printf("\tclock_gettime[CLOCK_PROCESS_CPUTIME_ID]:\t");
-            	print_struct_timespec(&ts);
-        	}
-    	}
-    	{
-        	ok=clock_gettime(CLOCK_THREAD_CPUTIME_ID,&ts);
-        	if(-1==ok)
-        	{
-           	 printf("\tclock_gettime[CLOCK_THREAD_CPUTIME_ID] error, 
-		because %s\n",strerror(errno));
-
-        	}else
-        	{
-            	printf("\tclock_gettime[CLOCK_THREAD_CPUTIME_ID]:\t");
-            	print_struct_timespec(&ts);
-        	}
-    	}
-
-	}
-	void test_gmtime()
-	{
-   	 struct tm *tmp;
-    	time_t caltime;
-    	caltime=time(NULL);
-
-    	tmp=gmtime(&caltime);
-    	if(NULL==tmp)
-    	{
-        	printf("\tgmtime error, because %s\n",strerror(errno));
-
-    	}else
-    	{
-        	printf("\tgmtime<current time> ok :\t");
-        	print_struct_tm(tmp);
-    	}
-	}
-	void test_mktime()
-	{
-    	struct tm buf;
-    	time_t data;
-    	buf.tm_sec=0;
-   	 buf.tm_min=0;
-   	 buf.tm_hour=12;
-    	buf.tm_year=2016;
-    	buf.tm_mday=8;
-    	buf.tm_mon=6;
-    	data=mktime(&buf);
-    	if(-1==data)
-   	 {
-       	 printf("\tmktime error, because %s\n",strerror(errno));
-
-    	}else
-    	{
-       	 printf("\tmktime <2016-06-08 12:00:00>ok, time_t is %ld\n",data);
-   	 }
-
-	}
-	void test_strftime()
-	{
-   	 size_t len;
-    	char buf [1024];
-    	size_t buf_size=1024;
-
-    	time_t caltime=time(NULL);
-    	struct tm *tmp= gmtime(&caltime);
-    	if(NULL==tmp) return;
-
-    	len=strftime(buf,buf_size,"Year:%Y;\tMonth:%m;\tDay:%d;\tHour:%H;\tMinute:%M;
-	\tSecond:%S\n",tmp);
-    	if(0==len)
-    	{
-       	 printf("\tstrftime error, because %s\n",strerror(errno));
-   	 }else
-    	{
-       	printf("\tstrftime <current time>  ok: %s",buf);
-    	}
-
-	}
-	void test_strptime()
-	{
-    	struct tm data;
-    	if(NULL==strptime("2016-06-08 12:00:00","%Y-%m-%d\t%H:%M:%S",&data))
-    	{
-        	printf("strptime error, because %s\n",strerror(errno));
-    	}else
-    	{
-        	printf("strptime <2016-06-08> ok :\t");
-       	 print_struct_tm(&data);
-    	}
-	}
-
-	int main(int argc, char *argv[])
-	{
-    	printf("Test time():\n");
-    	test_time();
-    	printf("Test clock_gettime():\n");
-    	test_clock_gettime();
-    	printf("Test gmtime():\n");
-    	test_gmtime();
-    	printf("Test mktime():\n");
-    	test_mktime();
-    	printf("Test srtftime():\n");
-    	test_strftime();
-    	printf("Test strptime():\n");
-    	test_strptime();
-    	return 0;
-	}
-
+    printf("\n\n******** test clock_gettime *********\n");
+    My_clock_gettime(CLOCK_REALTIME,&tsp_time);
+    My_clock_gettime(CLOCK_MONOTONIC,&tsp_time);
+    My_clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&tsp_time);
+    My_clock_gettime(CLOCK_THREAD_CPUTIME_ID,&tsp_time);
+    printf("\n\n******** test clock_getres  *********\n");
+    tsp_time.tv_sec=time(NULL);  //重新设定为当前时间
+    My_clock_getres(CLOCK_REALTIME,&tsp_time); //获取始终精度，只有 ns 单位才有意义
+    My_clock_getres(CLOCK_MONOTONIC,&tsp_time); //获取始终精度，只有 ns 单位才有意义
+    My_clock_getres(CLOCK_PROCESS_CPUTIME_ID,&tsp_time); //获取始终精度，只有 ns 单位才有意义
+    My_clock_getres(CLOCK_THREAD_CPUTIME_ID,&tsp_time); //获取始终精度，只有 ns 单位才有意义
+    printf("\n\n******** test clock_settime *********\n");
+    tsp_time.tv_sec=time(NULL);  //重新设定为当前时间
+    My_clock_settime(CLOCK_REALTIME,&tsp_time);
+    My_clock_settime(CLOCK_MONOTONIC,&tsp_time);
+    My_clock_settime(CLOCK_PROCESS_CPUTIME_ID,&tsp_time);
+    My_clock_settime(CLOCK_THREAD_CPUTIME_ID,&tsp_time);
+    printf("\n\n");
+    My_gettimeofday(&tvl_time,NULL);
+    tm_t=time(NULL); // 初始化 tm_t
+    struct tm * tm_tm=My_gmtime(&tm_t);
+    My_localtime(&tm_t);
+    My_mktime(tm_tm);
+    M_TRACE("---------  End test_times()  ---------\n\n");
+}	
 	```
 
   	![time](../imgs/system_info/time.JPG)  

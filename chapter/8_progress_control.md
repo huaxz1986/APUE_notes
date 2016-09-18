@@ -28,26 +28,20 @@
 	```
 	- 这些函数都没有出错返回
 
-3. 示例：
+3. 示例：在`main`函数中调用`test_progress_id`函数：
 
 	```
-#include <stdio.h>
-#include<unistd.h>
-void print_progress_id()
+void test_progress_id()
 {
-    printf("progress ids:\t");
-    printf("pid:%d\t",getpid());
-    printf("ppid:%d\t",getppid());
-    printf("uid:%d\t",getuid());
-    printf("euid:%d\t",geteuid());
-    printf("gid:%d\t",getgid());
-    printf("egid:%d\t",getegid());
-    printf("\n");
-}
-int main(int argc, char *argv[])
-{
-    print_progress_id();
-    return 0;
+    M_TRACE("---------  Begin test_progress_id()  ---------\n");
+    printf("progress ids:\n");
+    printf("\t progress id:%d\n",getpid());
+    printf("\t parent progress id:%d\n",getppid());
+    printf("\t user id:%d\n",getuid());
+    printf("\t efficient user id:%d\n",geteuid());
+    printf("\t group id:%d\n",getgid());
+    printf("\t efficient group id:%d\n",getegid());
+    M_TRACE("---------  End test_progress_id()  ---------\n\n");
 }
 	```
 	![ids](../imgs/progress_control/progress_id.JPG)
@@ -96,70 +90,50 @@ int main(int argc, char *argv[])
 		- 系统已经有了太多的进程
 		- 实际用户`ID`的进程总数超过了系统的限制（`CHILD_MAX`规定了每个实际用户`ID`在任何时刻拥有的最大进程数）
 
-5. 示例
+5. 示例： 在`main`函数中调用`test_fork` 函数：
 
 	```
-#include <stdio.h>
-#include<unistd.h>
-#include<string.h>
-#include<errno.h>
-void print_progress_id(const char* str)
-{
-    printf("%s progress ids:\t",str);
-    printf("%s pid:%d\t",str,getpid());
-    printf("%s ppid:%d\t",str,getppid());
-    printf("%s uid:%d\t",str,getuid());
-    printf("%s euid:%d\t",str,geteuid());
-    printf("%s gid:%d\t",str,getgid());
-    printf("%s egid:%d\t",str,getegid());
-    printf("\n");
-}
 void test_fork()
 {
-   pid_t id=fork();
-   if(id==-1)
-   {
-       printf("fork failed,because %s\n",strerror(errno));
-   }else if(id==0)
-   {//child
-
-        print_progress_id("In child");
-        _exit(0);
-   }else
-   {//parent
-        print_progress_id("In parent");
-   }
-}
-void test_fork_2()
-{
-    pid_t id=fork();
-    printf("This is in test_fork_2");
-    if(id==-1)
+    M_TRACE("---------  Begin test_fork()  ---------\n");
+    assert(prepare_file("test","abc",3,S_IRWXU)==0);
+    int fd=My_open("test",O_RDWR);
+    if(-1==fd)
     {
-        printf("fork failed,because %s\n",strerror(errno));
-    }else if(id==0)
-    {//child
-
-         print_progress_id("In child2");
-         _exit(0);
-    }else
-    {//parent
-         print_progress_id("In parent");
+        un_prepare_file("test");
+        M_TRACE("---------  End test_fork()  ---------\n\n");
+        return;
     }
+    //****** 打开文件成功 *************//
+    pid_t id=fork();
+    if(0==id)
+    { // child 1
+        prgress_func(fd,"**********In Child 1***********");
+        _exit(0);
+    }
+    sleep(2); // 确保父进程在子进程之后执行
+    id=fork();
+    printf("This is in the second fork\n");
+    if(0==id)
+    {// child 2
+        prgress_func(fd,"**********In Child 2***********");
+        _exit(0);
+    }
+    sleep(2);  // 确保父进程在子进程之后执行
+    prgress_func(fd,"**********In Parent***********");
+
+    close(fd);
+    un_prepare_file("test");
+    M_TRACE("---------  End test_fork()  ---------\n\n");
 }
-int main(int argc, char *argv[])
-{
-    test_fork();
-    test_fork_2();
-    return 0;
-}
+
 	```
 
   	![fork](../imgs/progress_control/fork.JPG)
 	
 	可以看出：
 	- 子进程和父进程的执行顺序是不确定的
-	- 由于标准`IO`库是带缓冲的，因此在`fork`调用之后，这些缓冲的数据也被拷贝到子进程中，因此`"This is in test_fork_2"`被输出两次
+	- 由于标准`IO`库是带缓冲的，因此在`fork`调用之后，这些缓冲的数据也被拷贝到子进程中，因此`"This is in the second fork"`被输出两次
 
 6. `fork`有两种用法：
 	- 父进程希望复制自己，使父进程和子进程同时执行不同的代码段。在网络服务中很常见：父进程等待请求，然后调用`fork`并使子进程处理请求
@@ -172,40 +146,47 @@ int main(int argc, char *argv[])
 	- `vfork`保证子进程优先运行，在子进程调用`exec`或者`exit`之后父进程才可能被调度运行
 	> 当子进程调用`exec`或者`exit`中的任何一个时，父进程会恢复运行，在此之前内核会使父进程处于休眠状态
 
-8. 示例：
+8. 示例：在`main`函数中调用`test_vfork`函数：
 
 	```
-#include <stdio.h>
-#include<unistd.h>
-#include<string.h>
-#include<errno.h>
-test_vfork()
+void test_vfork()
 {
-    pid_t id;
-    int i=0;
-    id=vfork();
-    if(id==-1)
+    M_TRACE("---------  Begin test_vfork()  ---------\n");
+    assert(prepare_file("test","abc",3,S_IRWXU)==0);
+    int fd=My_open("test",O_RDWR);
+    if(-1==fd)
     {
-        printf("vfork failed,because %s\n",strerror(errno));
-    }else if(id==0)
-    {//child
+        un_prepare_file("test");
+        M_TRACE("---------  End test_fork()  ---------\n\n");
+        return;
+    }
+    //****** 打开文件成功 *************//
 
-         printf("begin child\n");
-         printf("i=%d\n",i);
-         i=999;
-         printf("end child\n");
-         _exit(0);
+    int i=0; // 用于测试父子进程是否共享同一个子空间
+    int id=vfork();
+    if(0==id)
+    {//child
+//        fcntl_lock(fd);  // 加锁
+        printf("*********** In Child ***********\n");
+        print_pid_ppid();
+        printf("i=%d\n",i);
+        i=999;
+        printf("*********** In Child ***********\n");
+//        fcntl_unlock(fd); // 解锁
+        _exit(0);
     }else
     {//parent
-        printf("begin parent\n");
+//        fcntl_lock(fd);  // 加锁
+        printf("*********** In Parent ***********\n");
+        print_pid_ppid();
         printf("i=%d\n",i);
-        printf("end parent\n");
+        printf("*********** In Parent ***********\n");
+//        fcntl_unlock(fd); // 解锁
     }
-}
-int main(int argc, char *argv[])
-{
-    test_vfork();
-    return 0;
+
+    close(fd);
+    un_prepare_file("test");
+    M_TRACE("---------  End test_vfork()  ---------\n\n");
 }
 	```
   	![vfork](../imgs/progress_control/vfork.JPG)
@@ -213,6 +194,13 @@ int main(int argc, char *argv[])
 	可以看出：
 	- 子进程调用`_exit(0)`之前，父进程被阻塞；当子进程调用`_exit(0)`之后，父进程才开始执行
 	- 子进程共享了父进程的进程空间，且可以访问修改父进程的进程空间
+
+	如果我们通过加锁让父进程先获得锁，则结果如下：
+	![vfork2](../imgs/progress_control/vfork2.JPG)
+
+	可以看出：虽然我们期望父进程先执行（因为父进程先获得锁），但是实际上仍然是子进程先执行。`vfork`直接让父进程处于未就绪的状态，从而不会去获取记录锁。只有当子进程执行完`_exit(0)`时，父进程才就绪。
+
+
 
 ## 进程的终止
 
@@ -308,192 +296,53 @@ int main(int argc, char *argv[])
 		- `WIFSTOPPED(status)`：如果子进程的当前状态为暂停，则为真。此时可执行`WSTOPSIG(status)`获取使得子进程暂停的信号编号
 		- `WIFCONTINUED(status)`:如果子进程在暂停后已经继续执行了，则为真。
 
-6. 示例：
+6. 示例：在`main`函数中调用`test_wait_waitpid`函数：
 
 	```
-#include<stdio.h>
-#include<unistd.h>
-#include <stdlib.h>
-#include<sys/wait.h>
-void print_progress_id(const char* str)
+void test_wait_waitpid()
 {
-    printf("%s progress ids:\n\t",str);
-    printf("%s pid:%d\t",str,getpid());
-    printf("%s ppid:%d\t",str,getppid());
-    printf("\n");
-}
-void check_exit(int status)
-{
-    if(WIFEXITED(status))
+    M_TRACE("---------  Begin test_wait_waitpid()  ---------\n");
+    assert(prepare_file("test","abc",3,S_IRWXU)==0);
+    int fd=My_open("test",O_RDWR);
+    if(-1==fd)
     {
-        printf("exit normally,exit code is %d\n",WEXITSTATUS(status));
+        un_prepare_file("test");
+        M_TRACE("---------  End test_fork()  ---------\n\n");
+        return;
     }
-    if(WIFSIGNALED(status))
-    {
-        printf("terminate by signal, signal no is %d\n",WTERMSIG(status));
+    //****** 打开文件成功 *************//
+
+    prgress_func(fd,"**********Parent***********");
+    if(0!=child_exit(fd,100))
+    {// parent
+        sleep(1); //确保父进程稍后执行
+        if(0!=child_abort(fd))
+        {//parent
+            sleep(1); //确保父进程稍后执行
+            if(0!=child_signal(fd))
+            {
+                 sleep(1); //确保父进程稍后执行
+                 check_wait();   //only wait at parent （二选一）
+                 // check_waitpid(); // only wait at parent  （二选一）
+
+                 close(fd);
+                 un_prepare_file("test");
+                 M_TRACE("---------  End test_wait_waitpid()  ---------\n\n");
+            }
+        }
     }
-}
-void test_wait()
-{
-    int buf;
-    int child_id;
-    while((child_id=wait(&buf))>0) //当wait失败时返回
-    {
-        printf("child pid %d terminated!\t",child_id);
-        check_exit(buf);
-    }
-}
-void creat_child_exit()
-{
-    pid_t pid=fork();
-    if (pid==0)
-    {
-        print_progress_id("child_exit");
-        _exit(101);
-    }else if(pid==-1)
-    {
-        printf("creat failed\n");
-    }
-}
-void creat_child_abord()
-{
-    pid_t pid=fork();
-    if (pid==0)
-    {
-        print_progress_id("child_abord");
-        abort();
-        printf("never reached\n");
-    }else if(pid==-1)
-    {
-        printf("creat failed\n");
-    }
-}
-pid_t creat_child_return()
-{
-    pid_t pid=fork();
-    if (pid==0)
-    {
-        print_progress_id("child_return");
-        return 0;
-    }else if(pid==-1)
-    {
-        printf("creat failed\n");
-        return -1;
-    }else
-    {
-        return pid;
-    }
-}
-int main(int argc, char *argv[])
-{
-    print_progress_id("parent ");
-    creat_child_exit();
-    creat_child_abord();
-    if(creat_child_return()!=0)
-    {
-        test_wait();   //only wait at parent
-    }
-    return 11;
 }
 	```
   	![wait](../imgs/progress_control/wait.JPG)
-	可以看到：
+	
 	- 子进程的结束顺序跟它们派生的顺序没有什么关系。`wait`只会处理最先结束的子进程
-	- 调用了`_exit`以及正常`return`的子进程，属于正常终止；调用了`abort`的子进程属于异常终止
+	- 调用了`_exit`的子进程，属于正常终止；调用了`abort`和被信号终止的子进程属于异常终止
 
-	```
-#include<stdio.h>
-#include<unistd.h>
-#include <stdlib.h>
-#include<sys/wait.h>
-void print_progress_id(const char* str)
-{
-    printf("%s progress ids:\n\t",str);
-    printf("%s pid:%d\t",str,getpid());
-    printf("%s ppid:%d\t",str,getppid());
-    printf("\n");
-}
-void check_exit(int status)
-{
-    if(WIFEXITED(status))
-    {
-        printf("exit normally,exit code is %d\n",WEXITSTATUS(status));
-    }
-    if(WIFSIGNALED(status))
-    {
-        printf("terminate by signal, signal no is %d\n",WTERMSIG(status));
-    }
-}
-void test_waitpid(pid_t id)
-{
-    int buf;
-    int child_id;
-    if((child_id=waitpid(id,&buf,!WNOHANG))>0)
-    {
-        printf("child pid %d terminated!\t",child_id);
-        check_exit(buf);
-    }
-}
-pid_t creat_child_exit()
-{
-    pid_t pid=fork();
-    if (pid==0)
-    {
-        print_progress_id("child_exit");
-        _exit(101);
-    }else if(pid==-1)
-    {
-        printf("creat failed\n");
-    }
-    return pid;
-}
-pid_t creat_child_abord()
-{
-    pid_t pid=fork();
-    if (pid==0)
-    {
-        print_progress_id("child_abord");
-        abort();
-        printf("never reached\n");
-    }else if(pid==-1)
-    {
-        printf("creat failed\n");
-    }
-    return pid;
-}
-pid_t creat_child_return()
-{
-    pid_t pid=fork();
-    if (pid==0)
-    {
-        print_progress_id("child_return");
-        return 0;
-    }else if(pid==-1)
-    {
-        printf("creat failed\n");
-        return -1;
-    }else
-    {
-        return pid;
-    }
-}
-int main(int argc, char *argv[])
-{
-    pid_t id1,id2,id3;
-    print_progress_id("parent ");
-    id1=creat_child_exit();
-    id2=creat_child_abord();
-    if((id3=creat_child_return())!=0)   //only wait at parent
-    {
-        test_waitpid(id1);
-        test_waitpid(id2);
-        test_waitpid(id3);
-    }
-    return 11;
-}
-	```
+	如果我们使用 `check_waitpid()`，则结果如下：
+
+	
   	![waitpid](../imgs/progress_control/waitpid.JPG)
-	可以看到：
+	
 	- 通过`waitpid`可以严格控制取得终止子进程状态的顺序
 	- 通过`waitpid`依次等待所有的子进程，可以确保父进程是最后一个结束的
 
@@ -588,156 +437,105 @@ int main(int argc, char *argv[])
 	- 在很多UNIX操作系统中，这7个函数只有`execve`是内核的系统调用。另外 6 个只是库函数。它们最终都要调用该系统调用
 	![exec](../imgs/progress_control/exec.JPG)
 
-3. 示例：
+3. 示例： 在`main`函数中调用`test_exec` 函数
 
 	```
-#include <stdio.h>
-#include<unistd.h>
-#include<sys/wait.h>
-#include<string.h>
-#include<errno.h>
-void test_execl()
+void test_exec()
 {
-    if(fork()==0)
-    {//child
-       if(-1== execl("/home/huaxz1986/print_arg","execl_1","execl_2",
-			"execl_3",(char *) 0))
-           printf("execl error ,because %s\n",strerror(errno));
-    }
-}
-void test_execv()
-{
-    char *argv[3];
-    argv[0]="execv_1";
-    argv[1]="execv_2";
-    argv[2]=NULL;
-    if(fork()==0)
-    {//child
-        if(-1==execv("/home/huaxz1986/print_arg",argv))
-        {
-            printf("execv error ,because %s\n",strerror(errno));
-        }
-    }
-}
-void test_execle()
-{
-    char *envp[3];
-    envp[0]="le_env1=1";
-    envp[1]="le_env2=2";
-    envp[2]=NULL;
-    if(fork()==0)
-    {//child
-        if(-1== execle("/home/huaxz1986/print_arg","execle_1",
-		"execle_2","execle_3",(char *) 0,envp))
-             printf("execle error ,because %s\n",strerror(errno));
-    }
-}
-void test_execve()
-{
-    char *argv[3];
-    argv[0]="execve_1";
-    argv[1]="execve_2";
-    argv[2]=NULL;
-    char *envp[3];
-    envp[0]="ve_env1=1";
-    envp[1]="ve_env2=2";
-    envp[2]=NULL;
-    if(fork()==0)
-    {//child
-        if(-1== execve("/home/huaxz1986/print_arg",argv,envp))
-            printf("execve error ,because %s\n",strerror(errno));
-    }
-}
-void test_execlp()
-{
-    if(fork()==0)
-    {//child
-        if(-1== execlp("print_arg","execlp_1","execlp_2","execlp_3",(char *) 0))
-            printf("execlp error ,because %s\n",strerror(errno));
-    }
-}
-void test_execvp()
-{
-    char * argv[3];
-    argv[0]="execvp_1";
-    argv[1]="execvp_2";
-    argv[2]=NULL;
-    if(fork()==0)
-    {//child
-        if(-1== execvp("print_arg",argv))
-            printf("execvp error ,because %s\n",strerror(errno));
-    }
-}
-int main(int argc, char *argv[])
-{
-    int pid;
-    int buf;
-    test_execl();
-    test_execv();
-    test_execle();
-    test_execve();
-    test_execlp();
-    test_execvp();
-    return 0;
+    M_TRACE("---------  Begin test_exec()  ---------\n");
+    char buffer[1024];
+    getcwd(buffer,1024);
+    char *pathname=abs_path(buffer,"print_arg");
+
+    _test_execl(pathname); // 绝对路径名
+    _test_execv(pathname); // 绝对路径名
+    _test_execle(pathname); // 绝对路径名
+    _test_execve(pathname); // 绝对路 径名
+    _test_execlp("print_arg"); //相对文件名
+    _test_execvp("print_arg"); //相对文件名
+    M_TRACE("---------  End test_exec()  ---------\n\n");
 }
 	```
 	这里调用的`print_arg`程序非常简单，就是打印环境变量和命令行参数。其程序如下：
 
 	```
+//************* print_arg 程序的源代码 **********//
+//                                             //
+// 该程序的功能是打印环境变量以及参数列表            //
+//                                            //
+//********************************************//
 #include <stdio.h>
 #include<stdlib.h>
 #include<unistd.h>
 extern char **environ;
 void print_environ()
 {
-    printf("\tEnvironment:");
+    printf("\t************Environment***************\n");
     char **ptr=environ;
     while(*ptr!=NULL)
     {
-        printf("'%s'\t",*ptr);
+        printf("\t'%s'",*ptr);
         ptr++;
     }
     printf("\n");
 }
 int main(int argc, char *argv[])
-{    
-    printf("<Program print_arg> \n\tArguments:");
+{
+    printf("\t************Argument List***************\n");
     for(int i=0;i<argc;i++)
     {
-        printf("'%s'\t",argv[i]);
+        printf("\t'%s'",argv[i]);
     }
     printf("\n");
     print_environ();
+    return 0;
 }
 	```
-	编译`print_arg`程序后，将它放置在主目录下，并且向`PATH`中添加主目录路径。在`shell`中输入命令：
+	编译`print_arg`程序后，将它放置在目录`build-APUE-Desktop_Qt_5_5_1_GCC_64bit-Debug`下，并且向`PATH`中添加主目录路径。在`shell`中输入命令：
 	
 	```
-	PATH=$PATH:/home/huaxz1986
+	PATH=$PATH:/home/huaxz1986/build-APUE-Desktop_Qt_5_5_1_GCC_64bit-Debug
 	```
-	这是因为`execlp`和`execvp`需要`PATH`环境变量中寻找`filename`。如果未添加主目录路径，则程序提示指定的文件不存在。
+	这是因为`execlp`和`execvp`需要`PATH`环境变量中寻找`filename`。如果未添加合适的路径，则程序提示指定的文件不存在。
 	
 	最终调用结果输出到文件，内容为（省略号中为环境变量内容，因太长所以这里只截取一部分）：
 
 	```
-<Program print_arg> 
-	Arguments:'execl_1'	'execl_2'	'execl_3'	
-	Environment:'XDG_VTNR=7'	'LC_PAPER=zh_CN.UTF-8'	'LC_ADDRESS=zh_CN.UTF-8'	....
-<Program print_arg> 
-	Arguments:'execv_1'	'execv_2'	
-	Environment:'XDG_VTNR=7'	'LC_PAPER=zh_CN.UTF-8'	'LC_ADDRESS=zh_CN.UTF-8'	...
-<Program print_arg> 
-	Arguments:'execvp_1'	'execvp_2'	
-	Environment:'XDG_VTNR=7'	'LC_PAPER=zh_CN.UTF-8'	'LC_ADDRESS=zh_CN.UTF-8'	...
-<Program print_arg> 
-	Arguments:'execle_1'	'execle_2'	'execle_3'	
-	Environment:'le_env1=1'	'le_env2=2'	
-<Program print_arg> 
-	Arguments:'execve_1'	'execve_2'	
-	Environment:'ve_env1=1'	've_env2=2'	
-<Program print_arg> 
-	Arguments:'execlp_1'	'execlp_2'	'execlp_3'	
-	Environment:'XDG_VTNR=7'	'LC_PAPER=zh_CN.UTF-8'	'LC_ADDRESS=zh_CN.UTF-8'	...
+---------  Begin test_exec()  ---------
+---------  End test_exec()  ---------
+
+	************Argument List***************
+	'execle_arg1'	'execle_arg2'
+	************Environment***************
+	'execle_env1=1'	'execle_env2=2'
+	************Argument List***************
+	'execv_arg1'	'execv_arg2'
+	************Environment***************
+	'XDG_VTNR=7'	'LC_PAPER=zh_CN.UTF-8'	'LC_ADDRESS=zh_CN.UTF-8'	
+	...	
+	'LC_NAME=zh_CN.UTF-8'	'XAUTHORITY=/home/huaxz1986/.Xauthority'	'_=./APUE'
+	************Argument List***************
+	'execve_arg1'	'execve_arg2'
+	************Environment***************
+	'execve_env1=1'	'execve_env2=2'
+	************Argument List***************
+	'execvp_arg1'	'execvp_arg2'
+	************Environment***************
+	'XDG_VTNR=7'	'LC_PAPER=zh_CN.UTF-8'	'LC_ADDRESS=zh_CN.UTF-8'	
+	...	
+	'LC_NAME=zh_CN.UTF-8'	'XAUTHORITY=/home/huaxz1986/.Xauthority'	'_=./APUE'
+	************Argument List***************
+	'execlp_arg1'	'execlp_arg2'
+	************Environment***************
+	'XDG_VTNR=7'	'LC_PAPER=zh_CN.UTF-8'	'LC_ADDRESS=zh_CN.UTF-8'	
+	...	
+	'LC_NAME=zh_CN.UTF-8'	'XAUTHORITY=/home/huaxz1986/.Xauthority'	'_=./APUE'
+	************Argument List***************
+	'execl_arg1'	'execl_arg2'
+	************Environment***************
+	'XDG_VTNR=7'	'LC_PAPER=zh_CN.UTF-8'	'LC_ADDRESS=zh_CN.UTF-8'	
+	...	
+	'LC_NAME=zh_CN.UTF-8'	'XAUTHORITY=/home/huaxz1986/.Xauthority'	'_=./APUE'
 	```
 	可以发现：
 	- `execl/execv/execvp/execlp`继承了父进程的环境变量；`execle/execve`指定了环境变量
@@ -793,39 +591,17 @@ int main(int argc, char *argv[])
 	>- 因此如果一个进程以特殊的权限运行，而它又想生成另一个进程执行另外一个程序，则它应该直接使用`fork_exec`并且在`fork`之后，`exec`之前改回普通权限。
 	>- 设置用户`ID`和设置组`ID`程序绝不应该调用`system`函数
 
-8. 示例：
+8. 示例：在`main`函数中调用`test_system`函数：
 
 	```
-#include <stdio.h>
-#include<stdlib.h>
-#include<wait.h>
-#include<unistd.h>
-void check_exit(int status)
+void test_system()
 {
-    if(WIFEXITED(status))
-    {
-        printf("exit normally,exit code is %d\n",WEXITSTATUS(status));
-    }
-    if(WIFSIGNALED(status))
-    {
-        printf("terminate by signal, signal no is %d\n",WTERMSIG(status));
-    }
+    M_TRACE("---------  Begin test_system()  ---------\n");
+    My_system("ls /home"); //命令存在
+    My_system("ttttt"); // 不存在命令
+    M_TRACE("---------  End test_system()  ---------\n\n");
 }
-void test_exec_system()
-{
-    int i;
-    i=system("sleep 3");
-	printf("i=%d\n",i);
-	check_exit(i);
-    i=system("sleess");
-    printf("i=%d\n",i);
-}
-int main(int argc, char *argv[])
-{
-    int buf;
-    pid_t pid;
-    test_exec_system();
-}
+
 	```
 	注意：调用`system`后不再需要调用`wait`等进程控制原语了。这一切控制由`system`打包
 
@@ -891,7 +667,7 @@ int main(int argc, char *argv[])
 	
 	```
 	#include<unistd.h>
-	char *getlogin(void)
+	char *getlogin(void);
 	```
 	- 返回值：
 		- 成功：返回指向登录名字符串的指针
@@ -899,73 +675,53 @@ int main(int argc, char *argv[])
 
 	通常失败的原因是：进程的用户并没有登录到系统。比如守护进程。
 
-6. 示例：
+6. 示例：在`main`函数中调用`test_setuid_seteuid`函数：
 
 	```
-#include <stdio.h>
-#include<unistd.h>
-#include<pwd.h>
-#include<string.h>
-#include<errno.h>
-void print_uid()
+void test_setuid_seteuid()
 {
-    printf("uid and euid:\n");
-    printf("\tuid:%d\n",getuid());
-    printf("\teuid:%d\n",geteuid());
-}
-void test_setuid(uid_t id)
-{
-    if(vfork()==0)
-    {//child
-        printf("In child1\n");
-        print_uid();
-        printf("Will set uid to %d",id);
-        if(-1==setuid(id))
-        {
-            printf("setuid to %d failed,because %s\n",id,strerror(errno));
-        }else
-        {
-            print_uid();
-        }
-        _exit(0);
+    M_TRACE("---------  Begin test_setuid_seteuid()  ---------\n");
+    struct passwd* result=My_getpwnam("huaxz1986");
+    if(NULL==result)
+    {
+        M_TRACE("---------  End test_setuid_seteuid()  ---------\n\n");
+        return;
     }
-}
-void test_seteuid(uid_t id)
-{
-    if(vfork()==0)
-    {//child
-        printf("In child2\n");
-        print_uid();
-        printf("Will set uid to %d",id);
-        if(-1==seteuid(id))
-        {
-            printf("seteuid to %d failed,because %s\n",id,strerror(errno));
-        }else
-        {
-            print_uid();
-        }
-        _exit(0);
-    }
-}
-int main(int argc, char *argv[])
-{
-    uid_t id;
-    printf("In parent\n");
+
+    My_getlogin();
+    printf("\n********** Before set id **********\n");
     print_uid();
-    test_setuid(getpwnam("huaxz1986")->pw_uid);
-    test_seteuid(getpwnam("root")->pw_uid);
-    return 0;
+    print_gid();
+    print_euid();
+    print_egid();
+    printf("\n********** After set id **********\n");
+    My_setuid(result->pw_uid); // 二选一
+    My_setgid(result->pw_gid); // 二选一
+    My_seteuid(result->pw_uid); // 二选一
+    My_setegid(result->pw_gid); // 二选一
+//    My_setuid(0); // 二选一
+//    My_setgid(0); // 二选一
+//    My_seteuid(0); // 二选一
+//    My_setegid(0); // 二选一
+    print_uid();
+    print_gid();
+    print_euid();
+    print_egid();
+    M_TRACE("---------  End test_setuid_seteuid()  ---------\n\n");
 }
 	```
-	![setuid_seteuid](../imgs/progress_control/setuid_seteuid.JPG)	
-	该例子由父进程派生两个子进程
-	- 第一个子进程测试`setuid`函数，设置为`huaxz1986`的 `id`
-	- 第二个子进程测试`seteuid`函数，设置为`root`的`id`
-	- 为了防止发生竞争条件，这里使用`vfork`函数。每次子进程`_exit`或者`exec`之后父进程才继续执行
+	我们首先在普通用户状态下，将那些 `id`都设置成超级用户所属的用户`ID`和组`ID`：
 
+	![setuid_seteuid](../imgs/progress_control/setuid_seteuid.JPG)
+
+	然后，我们在超级用户状态下，将那些`id`都设置成普通用户的用户`ID`和组`ID`	
+	![setuid_seteuid2](../imgs/progress_control/setuid_seteuid2.JPG)
+
+	
 	可以看到：
-	- 普通进程无法将自己的用户ID和有效用户ID设置为超级用户`root`
-	- 超级进程可以设置自己的用户ID和有效用户ID为任意值
+	- 普通进程无法将自己的用户`ID`和有效用户`ID`设置为超级用户`root`
+	- 超级进程可以设置自己的用户`ID`和有效用户`ID`为任意值，但是无法修改组`ID`和有效组`ID`
+	- 另外这里发现，无论在普通用户下还是超级用户下， `getlogin`都调用失败
 
 	另外没有给出的截图是：超级进程一旦将自己的用户ID和有效用户ID设置为普通用户之后，该进程退化为普通进程
 	
@@ -1020,7 +776,7 @@ int main(int argc, char *argv[])
 	- 参数：
 		- `buf`：执行`tms`结构的指针。该结构由`times`填写并返回
 	- 返回值：
-		- 成功：返回流逝的墙上始终时间（以始终滴答数为单位）
+		- 成功：返回流逝的墙上始终时间（以时钟滴答数为单位）
 		- 失败：返回 -1
 	
 	一个进程可以度量的有3个时间：
@@ -1050,102 +806,57 @@ int main(int argc, char *argv[])
 	- `tms_cutime`和`tms_cstime`包含了`wait`函数族已经等待到的各个子进程的值
 	- `clock_t`可以使用`_SC_CLK_TCK`（用`sysconf`函数）转换成秒数
 
-4. 示例
+4. 示例：在`main`函数中调用`test_progress_times`函数：
 
 	```
-#include <stdio.h>
-#include<unistd.h>
-#include<time.h>
-#include<sys/wait.h>
-#include<sys/times.h>
-long clock_2_second(clock_t clk)
+void test_progress_times()
 {
-    return clk/sysconf(_SC_CLK_TCK);
-}
-void print_tms(struct tms*tm)
-{
-    if(tm==NULL)
+    M_TRACE("---------  Begin test_progress_times()  ---------\n");
+    assert(prepare_file("test","abc",3,S_IRWXU)==0);
+    int fd=My_open("test",O_RDWR);
+    if(-1==fd)
+    {
+        un_prepare_file("test");
+        M_TRACE("---------  End test_fork()  ---------\n\n");
         return;
-    printf("Time is:\n");
-    printf("\tuser cpu time:%d clock\n",tm->tms_utime);
-    printf("\tsystem cpu time:%d clock\n",tm->tms_stime);
-    printf("\tchilds user cpu time:%d clock\n",tm->tms_cutime);
-    printf("\tchilds system cpu time:%d clock\n",tm->tms_cstime);
-    printf("\tClocks Per Second is %d\n",sysconf(_SC_CLK_TCK));
-}
-pid_t child_1()
-{
-    pid_t pid;
-    if((pid=vfork())==0)
-    {//child
-        printf("In child1");
-        clock_t t1;
-        clock_t t2;
-        long num;
-        struct tms buf;
-        t1=times(&buf);
-        sleep(2); //睡眠2秒
-        for(int i=0;i<200000000;i++) //累加2亿次
-              num+=i;
-        t2=times(&buf);
-        printf("Child 1 elapsed time is %d s\n",clock_2_second(t2-t1));
-        print_tms(&buf);
-        _exit(num%7); //返回值没有意义。放在这里是为了防止编译器优化过程将循环优化掉
     }
-    return pid;
-}
-pid_t  child_2()
-{
-    pid_t pid;
-    if((pid=vfork())==0)
-    {//child
-        printf("In child2");
-        clock_t t1;
-        clock_t t2;
-        long num;
-        struct tms buf;
-        t1=times(&buf);
-        sleep(3);//睡眠3秒
-        for(int i=0;i<300000000;i++)//累加3亿次
-              num+=i;
-        t2=times(&buf);
-        printf("Child 2 elapsed time is %d s\n",clock_2_second(t2-t1));
-        print_tms(&buf);
-        _exit(num%7);//返回值没有意义。放在这里是为了防止编译器优化过程将循环优化掉
-    }
-    return pid;
-}
-int main(int argc, char *argv[])
-{
-    printf("In Parent\n");
-    clock_t t1;
-    clock_t t2;
-    int status;
-    long num;
+    //****** 打开文件成功 *************//
+    clock_t t1,t2;
     struct tms buf;
     t1=times(&buf);
-    for(int i=0;i<100000000;i++)//累加1亿次
-          num+=i;
-    waitpid(child_1(),&status,0);//必须wait子进程，才会获取子进程的统计信息
-    waitpid(child_2(),&status,0);
-    t2=times(&buf);
-    printf("Parent elapsed time is %d s\n",clock_2_second(t2-t1));
-    print_tms(&buf);
-    return num%7;//返回值没有意义。放在这里是为了防止编译器优化过程将循环优化掉
+    create_child(fd,1000000000);// 子进程直接 _exit
+    create_child(fd,2000000000);// 子进程直接 _exit
+    sleep(5);// 让子进程获得锁，否则父进程持有锁，然后等待子进程结束，最后死锁
+    fcntl_lock(fd);  // 加锁
+    busy_work(1000000000);// 只有父进程能到达这里
+    check_waitpid();
+    t2=My_times(&buf);
+    printf("Parent elapsed time is %d s\n",clock_2_second(t2-t1));\
+    fcntl_unlock(fd); // 解锁
+
+    close(fd);
+    un_prepare_file("test");
+    M_TRACE("---------  End test_progress_times()  ---------\n\n");
 }
 	```
 	![times](../imgs/progress_control/times.JPG)
-	该示例的父进程派生了两个子进程。第一个子进程睡眠了2秒，第二个子进程睡眠了3秒
-	- 为了便于观察结果，父进程和子进程都进行了百万次的循环累加。如果没有累加，则进程的用户CPU时间为0
+
+	该示例的父进程派生了两个子进程。每个子进程都睡眠了 2秒
+	- 为了便于观察结果，父进程和子进程都进行了十亿次级别的循环（`busy_work`实现的）。如果没有`busy_work`，则进程的用户CPU时间为0
 	- 流逝时间转换成了秒
 	- 父进程必须`wait`子进程才能收集子进程的信息。否则父进程的`cstime`和`cutime`均为0
-	- 为了防止发生竞争条件，这里使用`vfork`函数。每次子进程`_exit`或者`exec`之后父进程才继续执行
+	- 为了防止发生竞争条件，这里使用记录锁。
 
 	可以看到：
 	- 当进程睡眠时，只会影响进程的流逝时间，不会影响进程的`utime`和`stime`
 	- 进程的流逝时间必须用两次墙上时钟的差值
 	- 父进程想要获得子进程的运行时间，必须调用`wait`
-	- 父进程的流逝时间为： `(2s+3s+(22+1+122)/100 s)=6 s`。这里是因为所有进程是串行执行的（`vfork`的性质）
+	- 父进程获取的子进程的`user cpu time`等于`279+559=838`个时钟滴答，约等于 `839`个时钟滴答。等于 8 秒
+	- 父进程获取的子进程的`system cpu time`等于`0+6`个时钟滴答，等于0 秒。
+	- 第一个子进程的运行时间，除了`user cpu time`（等于2秒）之外，还加上睡眠时间（ 2 秒）等于4秒
+	- 第二个子进程的运行时间，除了`user cpu time`（等于5秒）之外，还加上睡眠时间（ 2 秒）等于7秒
+	- 父进程的运行时间	= 4秒（子进程一运行时间）+7秒（子进程二运行时间）+2秒（父进程的`user cpu time`），一共是 13秒。但是注意到：子进程一的`user cpu time`为 279个时钟滴答， 子进程二的`user cpu time`为 559 个时钟滴答，父进程的`user cpu time`为 280个时钟滴答。这三个时间加在一起应该是  1118 个时钟滴答，约 11秒。而我们前面计算是，为 2+5+2=9秒。因此父进程运行时间为 13秒+ 2秒=15秒
+	> 父进程`sleep`时，正好子进程在运行。由于记录锁的存在，时间可以这样累加。
 
 ## 进程调度
 
@@ -1197,59 +908,19 @@ int main(int argc, char *argv[])
 
 	`getpriority`不仅可以获得本进程的`nice`值，还可以获取一组相关进程的`nice`值。而`setpriority`可以为本进程、进程组、属于特定用户`ID`的所有进程设置优先级
 
-5. 示例：
+5. 示例：在`main`函数中调用`test_getpriority_setpriority`函数:
 
 	```
-#include <stdio.h>
-#include<unistd.h>
-#include<string.h>
-#include<errno.h>
-#include<sys/resource.h>
-void print_nice()
+void test_getpriority_setpriority()
 {
-    printf("\tNice value is %d\n",getpriority(PRIO_PROCESS,0));
-}
-void set_nice(int nc)
-{
-    errno=0;
-    if(-1==nice(nc))
-    {
-        if(errno!=0) //必须要判断：是nice 为-1，还是因为出错导致返回 -1
-            printf("nice error,because %s\n",strerror(errno));
-        else
-        {
-            printf("nice return -1!\n");
-            print_nice();
-        }
-    }else
-    {
-        print_nice();
-    }
-}
-pid_t child()
-{
-    pid_t id;
-    if((id=vfork())==0)
-    {//child
-
-        printf("In child\n");
-        print_nice();
-        set_nice(9999);//提升到上界
-        for(int i=25;i>=-20;i--) //从上界开始下降。到最下界之后会一直保持在下界
-        {
-            set_nice(-1);
-        }
-        _exit(0);
-    }
-}
-int main(int argc, char *argv[])
-{
-    printf("In parent\n");
-    print_nice();
-    child();
-    return 0;
+    M_TRACE("---------  Begin test_getpriority_setpriority()  ---------\n");
+    create_child();
+    // 只有父进程能到此处
+    check_waitpid();
+    My_getpriority(PRIO_PROCESS,0); // 父进程自己的 nice 值
+    M_TRACE("---------  End test_getpriority_setpriority()  --------\n\n");
 }
 	```
 	![nice](../imgs/progress_control/nice.JPG) 
-	该程序必须有超级用户运行，因为普通进程没有权限提升其优先级（即降低`nice`值）
-	
+	可以看到，如果为普通用户，则没有权限降低`nice`值。因为普通进程没有权限提升其优先级（即降低`nice`值）。在超级用户权限下，结果如下：
+	![nice2](../imgs/progress_control/nice2.JPG) 

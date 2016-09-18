@@ -109,7 +109,7 @@
 
 	设置用户ID位、设置组ID位 都包含在`stat.st_mode`中，可以通过下列两个宏测试：
 	- `S_ISUID()`：测试是否设置了设置用户ID位
-	- ·S_ISGID()`：测试是否设置了设置组ID位
+	- `S_ISGID()`：测试是否设置了设置组ID位
 
 5. 文件访问权限：所有文件类型（包括目录，字符特别文件等）都有访问权限。每个文件都有9个访问权限位：
 	- `S_IRUSR`：用户读
@@ -162,125 +162,25 @@
 		- 文件所在目录的组ID
 		> 具体选择哪个，由具体操作系统决定
 
-8. 示例
+8. `stat`和`lstat`示例：在`main`函数中调用`test_stat_lstat`函数：
 
 	```
-	#include <stdio.h>
-	#include<sys/stat.h>
-	#include<unistd.h>
-	#include<fcntl.h>
+void test_stat_lstat()
+{
+    M_TRACE("---------  Begin test_stat_lstat()  ---------\n");
+    Stat stat_buf;
+    My_stat("/home/huaxz1986/APUE/main.c",&stat_buf); // regular file
+    My_stat("/home/huaxz1986/APUE/",&stat_buf); // dir file
+    My_stat("/dev/loop0",&stat_buf); // block file
+    My_stat("/dev/mem",&stat_buf); // char file
+    My_lstat("/dev/cdrom",&stat_buf); // link file
+    My_stat("/run/systemd/initctl/fifo",&stat_buf); // fifo file
 
-	typedef struct stat Stat;
-
-	void test_file_type(Stat* file_stat,const char* file_name)
-	{
-    	printf("\t%s type is:",file_name);
-    	if(S_ISREG(file_stat->st_mode))
-        	printf(" regular file,  ") ;
-    	if(S_ISDIR(file_stat->st_mode))
-        	printf("directory file  ") ;
-    	if(S_ISCHR(file_stat->st_mode))
-        	printf("char file,  ") ;
-    	if(S_ISBLK(file_stat->st_mode))
-       		 printf(" block file,  ") ;
-   	if(S_ISFIFO(file_stat->st_mode))
-       		 printf("fifo  file,  ") ;
-    	if(S_ISLNK(file_stat->st_mode))
-       		 printf("ink file,  ") ;
-    	if(S_ISSOCK(file_stat->st_mode))
-        	printf("socket,  ") ;
-    	if(S_TYPEISMQ(file_stat))
-        	printf("message queue file, ") ;
-    	if(S_TYPEISSEM(file_stat))
-       		 printf("semaphore,  ") ;
-    	if(S_TYPEISSHM(file_stat))
-       		 printf("share memory,  ") ;
-    	printf("\n");
-	}
-	void test_file_id(Stat* file_stat,const char* file_name)
-	{
-   	 printf("\t%s file id:");
-   	 printf("owner id < %d >, ",file_stat->st_uid);
-    	printf("group id < %d >, ",file_stat->st_gid);
-    	if(S_ISUID&file_stat->st_mode)
-        	printf("set_user_id, ");
-    	if(S_ISGID&file_stat->st_mode)
-        	printf("set_group_id , ");
-    	printf("\n");
-	}
-	void test_file_permission(Stat* file_stat,const char* file_name)
-	{
-   	 printf("\t%s file permission:");
-    	if(S_IRUSR&file_stat->st_mode)
-       	 	printf("user read, ");
-    	if(S_IWUSR&file_stat->st_mode)
-       		 printf("user write, ");
-    	if(S_IXUSR&file_stat->st_mode)
-       		 printf("user exec, ");
-    	if(S_IRGRP&file_stat->st_mode)
-        		printf("group read, ");
-   	 if(S_IWGRP&file_stat->st_mode)
-       		 printf("group write, ");
-    	if(S_IXGRP&file_stat->st_mode)
-       		 printf("group exec, ");
-    	if(S_IROTH&file_stat->st_mode)
-        	printf("other read, ");
-    	if(S_IWOTH&file_stat->st_mode)
-       		 printf("other write, ");
-    	if(S_IXOTH&file_stat->st_mode)
-        	printf("other exec, ");
-    	printf("\n");
-	}
-
-	int main(int argc, char *argv[])
-	{
-    	Stat stat_buf;
-   	int fd;
-    	printf("Test regular file:\n");
-    	stat("/home/huaxz1986/main.c",&stat_buf);
-   	 test_file_type(&stat_buf,"/home/huaxz1986/main.c");
-    	test_file_id(&stat_buf,"/home/huaxz1986/main.c");
-    	test_file_permission(&stat_buf,"/home/huaxz1986/main.c");
-
-    	printf("Test directory file:\n");
-    	stat("/home/huaxz1986/file_dir",&stat_buf);
-    	test_file_type(&stat_buf,"/home/huaxz1986/file_dir");
-    	test_file_id(&stat_buf,"/home/huaxz1986/file_dir");
-    	test_file_permission(&stat_buf,"/home/huaxz1986/file_dir");
-
-   	 printf("Test block file:\n");
-   	 stat("/dev/loop0",&stat_buf);
-    	test_file_type(&stat_buf,"/dev/loop0E");
-    	test_file_id(&stat_buf,"/dev/loop0");
-    	test_file_permission(&stat_buf,"/dev/loop0");
-
-    	printf("Test char file:\n");
-    	stat("/dev/mem",&stat_buf);
-    	test_file_type(&stat_buf,"/dev/mem");
-    	test_file_id(&stat_buf,"/dev/mem");
-    	test_file_permission(&stat_buf,"/dev/mem");
-
-    	printf("Test link file:\n");
-    	stat("/dev/cdrom",&stat_buf);
-    	test_file_type(&stat_buf,"/dev/cdrom");
-    	test_file_id(&stat_buf,"/dev/cdrom");
-    	test_file_permission(&stat_buf,"/dev/cdrom");
-
-    	printf("Test fifo file:\n");
-   	 stat("/run/systemd/initctl/fifo",&stat_buf);
-   	 test_file_type(&stat_buf,"/run/systemd/initctl/fifo");
-   	 test_file_id(&stat_buf,"/run/systemd/initctl/fifo");
-    	test_file_permission(&stat_buf,"/run/systemd/initctl/fifo");
-
-    	printf("Create new file:\n");
-   	 fd=openat(AT_FDCWD,"test",O_WRONLY|O_CREAT,S_IRUSR);
-    	fstat(fd,&stat_buf);
-    	test_file_type(&stat_buf,"./test");
-    	test_file_id(&stat_buf,"./test");
-    	test_file_permission(&stat_buf,"./test");
-
-    	return 0;
-	}
+    int fd=My_open_with_mode("test_stat",O_WRONLY|O_CREAT,S_IRUSR); // create a new file
+    close(fd);
+    My_stat("test_stat",&stat_buf); // regular file
+    M_TRACE("---------  End test_stat_lstat()  ---------\n\n");
+}
 	```
 
   	![stat](../imgs/file_dir/stat.JPG) 
@@ -329,101 +229,23 @@
 		- 成功：旧的文件模式创建屏蔽字
 		- 函数未指定失败时返回何值
 
-	如果你在通过`creat`或者`open`函数指定了`mode`，那么该`mode`必须通过文件模式创建屏蔽字的屏蔽之后才是最终新创建的文件的权限模式。
+	如果你在通过`creat`或者`open`函数指定了`mode`，那么该`mode`必须通过文件模式创建屏蔽字的屏蔽之后才是最终新创建的文件的权限模式。`umask`指定了哪个，哪个权限就被屏蔽了！
 	> shell 有一个`umask`命令。我们可以通过该命令来设置或者打印当前的文件模式创建屏蔽字
 
-3. 示例
+3. 示例：测试 `umask`和`access`函数的用法：在`main`函数中调用`test_access_umask` 函数：
 
 	```
-	#include<stdio.h>
-	#include<unistd.h>
-	#include<string.h>
-	#include<errno.h>
-	#include<sys/stat.h>
-	#include<fcntl.h>
-	typedef struct stat Stat;
+void test_access_umask()
+{
+    My_access("/no/exist",F_OK); // no exist
+    My_access("/etc/shadow",W_OK);// can not write
+    My_access("/home/huaxz1986/APUE",W_OK); // can write
 
-	void test_access(const char*pathname,int mode)
-	{
-   	 int ok;
-   	 printf("\tAccess %s:",pathname);
-   	 ok=access(pathname,mode);
-   	 if(ok==-1)
-   	 {
-      	  printf("failed! Beause %s \n",strerror(errno));
-   	 }
-    	else
-    	{
-        	printf("ok!\n");
-   		 }
-	}
-	void test_umask(mode_t cmask)
-	{
-   		 mode_t old_mode;
-   		 old_mode=umask(cmask);
-   		 printf("\t old mask is:");
-   		 print_mode(old_mode);
-   		 printf("\t current mask is:");
-   		 print_mode(cmask);
-	}
-	void print_mode(mode_t expected_mode)
-	{
-   	 if(S_IRUSR&expected_mode)
-       		 printf("U_RD, ");
-    	if(S_IWUSR&expected_mode)
-       		 printf("U_WR, ");
-  	  if(S_IXUSR&expected_mode)
-      		  printf("U_EXC, ");
-    	if(S_IRGRP&expected_mode)
-      		  printf("G_RD, ");
-   	if(S_IWGRP&expected_mode)
-     		   printf("G_WR, ");
-   	 if(S_IXGRP&expected_mode)
-      		  printf("G_EXC, ");
-   	 if(S_IROTH&expected_mode)
-       		 printf("O_RD, ");
-    	if(S_IWOTH&expected_mode)
-      		  printf("O_WR, ");
-  	  if(S_IXOTH&expected_mode)
-       		 printf("O_EXC, ");
-    	printf("\n");
-	}
-
-	void test_file_mode(int expected_mode,const char* file_name)
-	{
-  	 	 printf("\t Expected file mode:");
-   		 print_mode(expected_mode);
-   	 	Stat stat_buf;
-   	 	int fd;
-    		fd=openat(AT_FDCWD,file_name,O_CREAT|O_EXCL|O_RDWR,expected_mode);
-    		if(fd==-1)
-   		 {
-       		 printf("open %s in test_file_mode,because %s",file_name,strerror(errno));
-       		 return ;
-    		}
-   		 fstat(fd,&stat_buf);
-   		 printf("\n \t Real file mode:");
-   		 print_mode(stat_buf.st_mode);
-   		 unlinkat(AT_FDCWD,"test_file",!AT_SYMLINK_FOLLOW);
-	}
-
-	int main(int argc, char *argv[])
-	{
-   	 printf("Test access: no exist file:\n");
-   	 test_access("/no/exist",F_OK);
-   	 printf("Test access: no write:\n");
-   	 test_access("/etc/shadow",W_OK);
-	printf("Test access: write ok:\n");
-   	test_access("/home/huaxz1986/file_dir",W_OK);
-   	 printf("\n\n\n");
-   	 printf("Current creat file:\n");
-   	 test_file_mode(S_IRWXU|S_IRWXG|S_IRWXO,"test1");
-   	 printf("umask:\n");
-   	 test_umask(S_IRUSR|S_IRGRP|S_IROTH);
-   	 printf("After umask :\n");
-   	 test_file_mode(S_IRWXU|S_IRWXG|S_IRWXO,"test2");
-   	return 0;
-	}
+    print_new_file_mode("test_umask1") ;// old umask
+    //new umask
+    My_umask(S_IRUSR|S_IRGRP|S_IROTH);
+    print_new_file_mode("test_umask2") ;// new umask
+}
 	```
   	![access_umask](../imgs/file_dir/access_umask.JPG) 
 
@@ -481,6 +303,12 @@
 	- `S_IWOTH`：用户写
 	- `S_IXOTH`：用户执行
 
+	`chmod`函数更新的只是`i`节点最近一次被修改的时间。
+
+	`chmod`函数在下列条件下自动清除两个权限位：
+	- 如果我们试图设置普通文件的粘着位，而且又没有超级用户权限，则`mod`中的粘着位被自动关闭。这意味着只有超级用户才能设置普通文件的粘着位
+	- 新创建文件的组`ID`可能不是调用进程所属的组`ID`，它可能是父目录的组`ID`
+ 
 2. 粘着位：如果对一个目录设置了粘着位，则任何对该目录具有写权限的进程都能够在该目录中创建文件。但是：只有满足下列条件之一的用户才能删除或者重命名该目录下的文件：
 	- 拥有此文件
 	- 拥有此目录
@@ -522,78 +350,18 @@
 	- `lchown`函数更改的是符号链接本身，而`chown`遇到符号链接时更改的是符号链接指向的文件
 	- 如果这些函数由非超级用户进程调用，则成功返回时，该文件的设置用户ID和设置组ID位都被清除
 
-4. 示例
+4. 示例：在 `main` 函数中调用`test_chmod_chown` 函数：
 
 	```
-	#include <stdio.h>
-	#include<fcntl.h>
-	#include<sys/stat.h>
-	#include<unistd.h>
-	#include<errno.h>
-	#include<string.h>
-	typedef struct stat Stat;
-	void print_mode(mode_t expected_mode)
-	{
-  	  printf("\t");
-    	if(S_IRUSR&expected_mode)
-        	printf("U_RD, ");
-    	if(S_IWUSR&expected_mode)
-        	printf("U_WR, ");
-   	 if(S_IXUSR&expected_mode)
-        	printf("U_EXC, ");
-    	if(S_IRGRP&expected_mode)
-        	printf("G_RD, ");
-    	if(S_IWGRP&expected_mode)
-        	printf("G_WR, ");
-   	if(S_IXGRP&expected_mode)
-        	printf("G_EXC, ");
-    	if(S_IROTH&expected_mode)
-        	printf("O_RD, ");
-    	if(S_IWOTH&expected_mode)
-        	printf("O_WR, ");
-    	if(S_IXOTH&expected_mode)
-        	printf("O_EXC, ");
-    	printf("\n");
-	}
+void test_chmod_chown()
+{
+    const char *file_name="test";
+    Stat buf;
 
-
-	int main(int argc, char *argv[])
-	{
-    	Stat stat_buf;
-    	int fd;
-
-    	fd=openat(AT_FDCWD,"test",O_CREAT|O_RDWR,S_IRWXU|S_IRWXG|S_IRWXO);
-    	fstat(fd,&stat_buf);
-   	 printf("Current mode:\n");
-    	print_mode(stat_buf.st_mode);
-    	printf("Current user: %d, current group: %d\n",stat_buf.st_uid,stat_buf.st_gid);
-
-    	if(fchmod(fd,S_IRWXU)==-1)
-    	{
-       		 printf("chmod failed,beause of %s",strerror(errno));
-
-   	 }else
-    	{
-        	printf("After Change mode:\n");
-        	fstat(fd,&stat_buf);
-        	print_mode(stat_buf.st_mode);
-
-    	}
-
-    	if(fchown(fd,1001,1001)==-1)
-    	{
-        	printf("chown failed,beause of %s\n",strerror(errno));
-
-    	}else
-    	{
-       	fstat(fd,&stat_buf);
-       	printf("After Change owner--> user : %d, current group: %
-	d\n",stat_buf.st_uid,stat_buf.st_gid);
-    	}
-
-    	return 0;
-	}
-
+    My_stat(file_name,&buf);
+    My_chmod(file_name,S_IRWXU);
+    My_chown(file_name,1,1);
+}
 	```
 
   	![chmod_chown](../imgs/file_dir/chmod_chown.JPG) 
@@ -632,99 +400,36 @@
 	- 若`length`小于文件的原大小，则修改文件大小之后，文件新的尾端之后的位置不再可以访问
 	- 若`length`大于文件的原大小，则修改文件大小之后，会形成空洞。即从文件原大小新的尾端形成了空洞
 
-3. 示例
+3. 示例：在`main`函数中调用`test_truncate_size`函数：
 
 	```
-	#include <stdio.h>
-	#include<sys/stat.h>
-	#include<string.h>
-	#include<errno.h>
-	#include<unistd.h>
-	#include<fcntl.h>
-	typedef struct stat Stat;
-	void print_file_size(int fd)
-	{
-    	int ok;
-    	Stat stat;
-    	ok=fstat(fd,&stat);
-    	if(ok==01)
-    	{
-       		 printf("\tfstat error,because of %s\n",strerror(errno));
-    	}else
-    	{
-        	printf("\tfile size is :%d; blksize:%d; blocks:%d
-		\n",stat.st_size,stat.st_blksize,stat.st_blocks);
-    	}
-	}
-	void test_truncate(int fd,off_t len)
-	{
-    		int ok;
-   		 ok=ftruncate(fd,len);
-   		 if(ok==-1)
-    		{
-        		printf("\tftruncate error,because of %s\n",strerror(errno));
-    		}else
-    		{
-        		print_file_size(fd);
-    		}
-	}
-	void test_open_trunc(const char* filename)
-	{
-   	 	int fd;
-    		fd=openat(AT_FDCWD,filename,O_TRUNC|O_RDWR);
-    		if(fd==-1)
-    		{
-       		 printf("\topenat %s failed,because of %s\n",strerror(errno));
-    		}else
-    		{
-        		print_file_size(fd);
-    		}
-	}
-	void read_fd(int fd,int len)
-	{
-   	 	char bytes[2048];
-    		int ok;
-    		ok=read(fd,bytes,len);
-    		int i;
-    		if(ok==-1)
-    		{
-         		printf("\tread error,because of %s\n",strerror(errno));
-    		}else
-    		{
-        		lseek(fd,0,SEEK_SET);
-        		printf("\tthe bytes is:");
-        		for(i=0;i<ok;i++)
-        		{
-            		printf("\t%d",bytes[i]);
-        		}
-        		printf("\n");
-    		}
-	}
-
-	int main(int argc, char *argv[])
-	{
-    		int fd;
-
-    		fd=openat(AT_FDCWD,"test",O_CREAT|O_RDWR,S_IRWXU);
-   		 if(fd==-1)
-       			 return;
-    		write(fd,"abcdefg",8);
-    		lseek(fd,0,SEEK_SET);
-    		printf("Original size:\n");
-    		print_file_size(fd);
-    		printf("Truncate to 100\n");
-    		test_truncate(fd,100);
-    		read_fd(fd,100);
-    		printf("Truncate to 2\n");
-    		test_truncate(fd,2);
-    		read_fd(fd,2);
-    		close(fd);
-   		 printf("Test open with trunc:\n");
-   		 test_open_trunc("test");
-   		read_fd(fd,0);
-    		return 0;
-	}
-
+void test_truncate_size()
+{
+    M_TRACE("---------  Begin test_truncate_size()  ---------\n");
+    char buffer[100];
+    int len;
+    int fd=My_open_with_mode("test",O_CREAT|O_TRUNC|O_RDWR,S_IRWXU);
+    My_write(fd,"abcdefg",8);
+    print_file_size("test");  // 打印文件大小
+    //****  扩张文件 *******//
+    My_truncate("test",20);  // 扩张文件
+    My_lseek(fd,0,SEEK_SET);  // 读取之前先调整文件读取位置
+    len=My_read(fd,buffer,20);
+    printf("Read:");
+    for (int i=0;i<len;i++)  // 打印读取内容
+        printf("\t0x%x,",buffer[i]);
+    printf("\n");
+    //****  截断文件 *******//
+    My_truncate("test",5);   // 截断文件
+    My_lseek(fd,0,SEEK_SET);  // 读取之前先调整文件读取位置
+    len=My_read(fd,buffer,5);
+    printf("Read:");
+    for (int i=0;i<len;i++)
+        printf("\t0x%x,",buffer[i]);
+    printf("\n");
+    close(fd);
+    M_TRACE("---------  End test_truncate_size()  ---------\n");
+}
 	```
 
   	![truncate](../imgs/file_dir/truncate.JPG) 
@@ -766,7 +471,8 @@
 
 	对于处理文件和目录的函数，如果传递的是一个符号链接的文件名，则应该注意：函数是否跟随符号链接，即函数是处理符号链接指向的文件，还是处理符号链接本身。
 
-	- 跟随符号链接（即处理符号链接指向的文件）的函数有：`access`、`chdir`、`chmod`、`chown`、`creat`、`exec`、`link`、`open`、`opendir`、`pathconf`、`stat`、`truncate`
+	- 跟随符号链接（即处理符号链接指向的文件）的函数有：`access`、`chdir`、`chmod`、`chown`、
+	`creat`、`exec`、`link`、`open`、`opendir`、`pathconf`、`stat`、`truncate`
 	- 不跟随符号链接（即处理符号链接文件本身）的函数有：`lchown`、`lstat`、`readlink`、`remove`、`rename`、`unlink`
 		- 一个例外的情况：如果用`O_CREAT`和`O_EXCL`选项调用`open`，此时若参数是个符号链接的文件名，则`open`出错返回（并不考虑符号链接指向的文件是否存在），同时将`errno`设为`EEXIST`
 
@@ -856,73 +562,27 @@
 	如果文件系统支持，超级用户可以调用`unlink`，其参数`pathname`指定一个目录
 	> 通常推荐用`rmdir`函数，其语义更加清晰
 
-6. `link/unlink`实例：
+6. `link/unlink`实例：在`main`函数中调用`test_link_unlink`函数
 
 	```
-	#include<stdio.h>
-	#include<unistd.h>
-	#include<sys/stat.h>
-	#include<fcntl.h>
-	#include<string.h>
-	#include<errno.h>
+void test_link_unlink()
+{
+    M_TRACE("---------  Begin test_link_unlink()  ---------\n");
+    assert(prepare_file("test",NULL,0,S_IRWXU)==0);
+    un_prepare_file("test1");
 
-	typedef struct stat Stat;
-	void print_link_num(const char*path)
-	{
-    		Stat stat;
-    		if(-1==fstatat(AT_FDCWD,path,&stat,0))
-    		{
-       		 printf("\tfstatat %s error,because %s\n",path,strerror(errno));
-    		}else
-    		{
-        		printf("\t%s link is %d\n",path,stat.st_nlink);
-    		}
-	}
-	void add_link(const char *path,const char *new_path)
-	{
-    		if(-1==linkat(AT_FDCWD,path,AT_FDCWD,new_path,0))
-    		{
-       		 printf("\tadd_link %s error,because %s\n",path,strerror(errno));
-    		}else
-    		{
-        		print_link_num(path);
-    		}
-	}
-	void del_link(const char *path)
-	{
-    		if(-1==unlinkat(AT_FDCWD,path,0))
-    		{
-        		printf("\tun_link %s error,because %s\n",path,strerror(errno));
-    		}else
-    		{
-       		 print_link_num(path);
-    		}
-	}
+    print_file_link_num("test");
+    My_link("test","test1");
+    My_unlink("test1");
+    print_file_link_num("test");
+    My_unlink("test1");
+    My_unlink("test");
+    print_file_link_num("test");
 
-	int main(int argc, char *argv[])
-	{
-    		int fd;
-    		fd=openat(AT_FDCWD,"test",O_CREAT|O_RDWR,S_IRWXU);
-    		if (-1==fd) return;
-    		close(fd);
-
-    		printf("The original link num\n");
-    		print_link_num("test");  // link_num=1
-    		printf("Add link\n");
-    		add_link("test","new_test");// link_num=2
-    		printf("\t The new file link:\n\t");
-    		print_link_num("new_test");
-   		 printf("Del new file link\n");
-   		 del_link("new_test"); // link_num=1
-    		printf("\tThe original file link\n\t");
-    		print_link_num("test");
-    		printf("Del original file link\n");
-    		del_link("test"); // link_num=0
-    		// test link is 0
-    		printf("Del after he original file link is 0:\n");
-    		del_link("test");
-    		return 0;
-	}
+    un_prepare_file("test");
+    un_prepare_file("test1");
+    M_TRACE("---------  End test_link_unlink()  ---------\n\n");
+}
 	```
 	  ![link_unlink](../imgs/file_dir/link_unlink.JPG) 
 
@@ -1044,92 +704,36 @@
 	注意：读入`buf`中的符号链接的内容，并不是以`null`字节终止。
 	> 以`null`字节终止的是内存中的字符串这种数据结构。而符号链接文件的内容是简单的字符序列，并不是字符串。
 
-11. 符号链接示例：
+11. 符号链接示例：在`main`函数中调用`test_symlink_readlink`函数：
 
 	```
-	#include <stdio.h>
-	#include<unistd.h>
-	#include<sys/stat.h>
-	#include<string.h>
-	#include<errno.h>
-	#include<fcntl.h>
+void test_symlink_readlink()
+{
+    M_TRACE("---------  Begin test_symlink_readlink()  ---------\n");
+    assert(prepare_file("test","abcdefg0123456",14,S_IRWXU)==0); // 准备 test 文件
+    print_file_type("test"); // 查看 test 文件类型
 
-	typedef struct stat Stat;
+    My_symlink("test","test_symlink"); // 创建软连接 test_symlink 到 test
+    print_file_type("test_symlink"); // 查看 test_symlink 文件类型
+    print_link_file("test_symlink"); // 由于open 是链接跟随，所以这里打印 test 的内容
 
-	void test_file_type(const char* file_name)
-            {
-                Stat _stat;
-                if(-1==stat(file_name,&_stat))
-                {
-                    printf("test_file_type file %s fail,because of %s
-	\n",file_name,strerror(errno));
-                    return;
-                }
-                printf("%s file type is:",file_name);
-                if(S_ISLNK(_stat.st_mode))
-                     printf("link file,  ") ;
-                if(S_ISREG(_stat.st_mode))
-                    printf(" regular file,  ") ;
-                printf("\n");
-            }
-	void creat_file(const char* file_name)
-	{
-    	int fd;
-    	fd=open(file_name,O_CREAT|O_RDWR,S_IRWXU);
-    	if(-1==fd)
-    	{
-        	printf("creat file %s fail,because of %s\n",file_name,strerror(errno));
-    	}
-    	else{
-        	close(fd);
-    	}
-	}
-	int  creat_symlink(const char* actual_name,const char* sym_name)
-	{
-    	int ok;
-    	ok=symlink(actual_name,sym_name);
-    	if(-1==ok)
-    	{
-        	printf("creat symlink %s fail,because of %s\n",sym_name,strerror(errno));
-    	}
-    	return ok;
-	}
-	void read_symlink(const char* sym_name)
-	{
-    	char buffer[2048];
-    	int len,i;
-    	len=readlink(sym_name,&buffer,2048);
-    	if(-1==len)
-    	{
-       		 printf("read symlink %s fail,because of %s\n",sym_name,strerror(errno));
-   		}else
-    	{
-        	printf("length <%d>, content:",len);
-        	for(i=0;i<len;i++)
-        	{
-            	printf("%c",buffer[i]);
-        	}
-        	printf("\n");
-    	}
-	}
+    char buffer[128];
+    My_readlink("test_symlink",buffer,128);
 
-	int main(int argc, char *argv[])
-	{
+    un_prepare_file("test"); // 删除 test 文件
+    un_prepare_file("test_symlink"); // 删除 test_symlink 文件
+    M_TRACE("---------  End test_symlink_readlink()  ---------\n\n");
+}
 
-    	creat_file("/home/huaxz1986/test");
-    	test_file_type("/home/huaxz1986/test");
-    	creat_symlink("/home/huaxz1986/test","/home/huaxz1986/sym_test");
-    	test_file_type("/home/huaxz1986/sym_test");
-    	read_symlink("/home/huaxz1986/sym_test");
-	}
 
 	```
 
-	  ![symlink](../imgs/file_dir/symlink.JPG) 
+	![symlink](../imgs/file_dir/symlink.JPG)  
 
 	可以看到：
 	- 符号链接文件的内容就是它链接到的那个文件的绝对路径名，其中路径名字符序列不包含 `null`字节
 	- 在 `ubuntu 16.04`中，经多次测试，符号链接文件和普通文件的 `st_mode`完全相同。
+	- `open`一个链接文件，然后`read`时发现读文件出错，原因是文件描述符有误（实际上打开文件时返回的文件描述符没问题）
 
 ## 六、修改文件的时间
 
@@ -1178,8 +782,9 @@
 	
 			```
 			struct timeval{
-			time_t tv_sec;//秒
-			long tv_usec; //微秒
+				time_t tv_sec;//秒
+				long tv_usec; //微秒
+			};
 			```
 
 		对于 `futimens`函数：
@@ -1201,82 +806,30 @@
 
 	我们不能对`st_ctim`（i节点最后被修改时间）指定一个值。这个时间是被自动更新的。
 
-3. 示例：
+3. 示例：在 `main`函数中调用`test_utimes`函数： 
 
 	```
-	#include <stdio.h>
-	#include<sys/stat.h>
-	#include<string.h>
-	#include<errno.h>
-	#include<unistd.h>
-	#include<fcntl.h>
-	typedef struct stat Stat;
-	typedef struct timespec Timespec;
-	void print_time(const char*path)
-	{
-    	Stat buffer;
-    	if(-1==stat(path,&buffer))
-    	{
-        	printf("stat file <%s> error,because %s",path,strerror(errno));
-    	}else
-    	{
-        	printf("\t%s time:\n",path);
-        	printf("\t\tdata last access time:<%d s,%d ns
-	>\n",buffer.st_atim.tv_sec,buffer.st_atim.tv_nsec);
-        	printf("\t\tdata last modify time:<%d s,%d ns>	
-	\n",buffer.st_mtim.tv_sec,buffer.st_mtim.tv_nsec);
-        	printf("\t\tinfo last access time:<%d s,%d ns
-	>\n",buffer.st_ctim.tv_sec,buffer.st_ctim.tv_nsec);
-    	}
-	}
-	void creat_file(const char* file_name)
-	{
-    	int fd;
-    	fd=open(file_name,O_CREAT|O_RDWR,S_IRWXU);
-    	if(-1==fd)
-    	{
-       	 printf("creat file %s fail,because of %s\n",file_name,strerror(errno));
-    	}
-    	else{
-        	close(fd);
-    	}
-	}
-	void set_time(const char* file_name,Timespec  time[2])
-	{
-    	if(utimensat(AT_FDCWD,file_name,time,0)==-1)
-    	{
-        	printf("utimensat file <%s> error,because %s",file_name,strerror(errno));
-    	}else
-    	{
-        	print_time(file_name);
-    	}
-	}
+void test_utimes()
+{
+    M_TRACE("---------  Begin test_utimes()  ---------\n");
+    assert(prepare_file("test",NULL,0,S_IRWXU)==0); // 准备 test 文件
+    print_file_time("test");
+    sleep(2);
+    My_access("test",F_OK); // 访问文件，但不修改文件
+    print_file_time("test");
+    sleep(2);
+    My_chmod("test",S_IRUSR|S_IWUSR);//  修改文件状态
+    print_file_time("test");
 
-	int main(int argc, char *argv[])
-	{
-    	Timespec times[2];
- 	  	times[0].tv_nsec=10;
-    	times[1].tv_sec=10;
-    	times[1].tv_nsec=10;
-    	printf("Create file:\n");
-    	creat_file("/home/huaxz1986/test_time");
-    	print_time("/home/huaxz1986/test_time");
-    	sleep(2);
-    	printf("Access not modify time:\n");
-    	access("/home/huaxz1986/test_time",F_OK);
-    	print_time("/home/huaxz1986/test_time");
-    	sleep(2);
-    	printf("Chmod only modify st_ctime:\n");
-    	chmod("/home/huaxz1986/test_time",S_IRUSR|S_IWUSR);
-    	print_time("/home/huaxz1986/test_time");
-    	sleep(2);
-    	printf("Set data access time , data modify time to now:");
-    	set_time("/home/huaxz1986/test_time",NULL);
-    	sleep(2);
-    	printf("Set data access time , data modify time  ");
-    	set_time("/home/huaxz1986/test_time",times);
-    	return 0;
-	}
+    struct timeval times[2];
+    times[0].tv_usec=10;
+    times[1].tv_sec=10;
+    times[1].tv_usec=10;
+    My_utimes("test",times);
+
+    un_prepare_file("test"); // 删除 test 文件
+    M_TRACE("---------  End test_utimes()  ---------\n\n");
+}
 	```
 
 	  ![utimes](../imgs/file_dir/utimes.JPG) 	
@@ -1402,64 +955,43 @@
 		> 缓冲区必须足够长以容纳绝对路径名加上一个终止`null`字节。否则返回出错。
 		- 返回值： 成功则返回 `buf`；失败返回 `NULL`
 
-5. 示例
+5. 示例： 在`main`函数中调用 `test_dir_operations` 函数：
 
 	```
-	#include <stdio.h>
-	#include<unistd.h>
-	#include<string.h>
-	#include<errno.h>
-	#include<dirent.h>S
-	typedef struct dirent Dirent;
-	void print_current_work_dir()
-	{
-    	char buffer[1024];
-    	if(getcwd(buffer,1024)==NULL)
-    	{
-        	printf("\t getcwd failed,because:%s\n",strerror(errno));
-    	}else
-    	{
-       	 printf("\t current work dir is :%s\n",buffer);
-    	}
-	}
-	void change_current_work_dir(const char*path)
-	{
-    	if(chdir(path)==-1)
-    	{
-        	printf("change current work dir to %s failed,because:%s\n"
-	,path,strerror(errno));
-    	}else
-    	{
-        	print_current_work_dir();
-    	}
-	}
-	void list_dir(const char *path)
-	{
-   	 DIR * dir;
-    	Dirent * dir_ent;
-    	dir=opendir(path);
-    	if(dir==NULL)
-    	{
-        	printf("\t open dir %s  failed,because:%s\n",path,strerror(errno));
-        	return;
-    	}
-    	printf("%s contents is :\n",path);
-    	while((dir_ent=readdir(dir)) !=NULL)
-    	{
-       	 printf("\tid:<%d>, file_name :<%s>\n",dir_ent->d_ino,dir_ent->d_name);
-    	}
-    	closedir(dir);
-	}
+void test_dir_operations()
+{
+    M_TRACE("---------  Begin test_dir_operations()  ---------\n");
+    //*** 创建目录 ****
+    My_mkdir("test",S_IRWXU);
+    My_mkdir("test/test1",S_IRWXU);
 
-	int main(int argc, char *argv[])
-	{
-   	 printf("Current work dir:\n");
-   	 print_current_work_dir();
-    	printf("Expected change current work dir to /home/huaxz1986\n");
-    	change_current_work_dir("/home/huaxz1986");
-    	list_dir("/home/huaxz1986");
-    	return 0;
-	}
+    //*** 创建文件
+    prepare_file("test/tfile_1",NULL,0,S_IRWXU);
+    prepare_file("test/tfile_2",NULL,0,S_IRWXU);
+    prepare_file("test/tfile_3",NULL,0,S_IRWXU);
+    prepare_file("test/test1/tfile_11",NULL,0,S_IRWXU);
+    prepare_file("test/test1/tfile_22",NULL,0,S_IRWXU);
+    prepare_file("test/test1/tfile_33",NULL,0,S_IRWXU);
+
+    print_dir("test");
+
+    print_cwd();
+    My_chdir("test");
+    print_cwd();
+    My_chdir("../"); // 切换回来，否则后面的删除文件都会失败（因为都是相对路径）
+    print_cwd();
+    //***** 清理
+    My_rmdir("test"); // 目录非空，删除失败！
+    un_prepare_file("test/tfile_1");
+    un_prepare_file("test/tfile_2");
+    un_prepare_file("test/tfile_3");
+    un_prepare_file("test/test1/tfile_11");
+    un_prepare_file("test/test1/tfile_22");
+    un_prepare_file("test/test1/tfile_33");
+    My_rmdir("test/test1"); // 必须非空才能删除成功
+    My_rmdir("test"); // 必须非空才能删除成功
+    M_TRACE("---------  End test_dir_operations()  ---------\n\n");
+}
 	```
 
 	  ![dir_function](../imgs/file_dir/dir_function.JPG) 
