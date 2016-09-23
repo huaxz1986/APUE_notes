@@ -856,7 +856,7 @@ void test_spinlock()
 
 	一旦到达屏障计数值，而且线程处于非阻塞状态，那么屏障就可以重用（即屏障计数有从零开始）。此时屏障的计数目标数量仍然不变。如果你希望改变计数的目标数量（比如扩大到达线程的目标数量），则必须再一次调用`pthread_barrier_init`函数。
 
-5. 示例：在`main`函数中调用`test_spinlock`函数：
+5. 示例：在`main`函数中调用`test_barrier`函数：
 
 	```
 void test_barrier()
