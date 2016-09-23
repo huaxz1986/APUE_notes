@@ -78,150 +78,32 @@
 	- 如果需要向`start_rtn`函数传递一个以上的参数，那么可以将这些参数放置在一个结构中，然后将这个结构的地址作为`arg`参数传入。
 	- 线程创建的时候，并不能保证哪个线程会先运行：有可能是新创建线程先运行，也可能是调用线程先运行
 	- 新创建的线程可以访问进程的地址空间，并继承了调用线程的浮点环境和信号屏蔽字，但是该线程的挂起信号集会被清除
-7. 示例
+7. 示例：在`main`函数中调用`test_thread_create`函数：
 
 	```
-#include <stdio.h>
-#include<pthread.h>
-#include<string.h>
-#include<signal.h>
-#include<errno.h>
-typedef void * VType;
-pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;//互斥量，每个线程用它来完成串行工作
-void print_sigset(sigset_t *set) // 打印信号集
+void test_thread_create()
 {
-    printf("set is:\t");
-    if(set==NULL)
-    {
-        printf("NULL\n");
-        return ;
-    }
-    if(sigismember(set,SIGABRT)) printf("SIGABRT\t");
-    if(sigismember(set,SIGALRM)) printf("SIGALRM\t");
-    if(sigismember(set,SIGBUS)) printf("SIGBUS\t");
-    if(sigismember(set,SIGCHLD)) printf("SIGCHLD\t");
-    if(sigismember(set,SIGCONT)) printf("SIGCONT\t");
-    if(sigismember(set,SIGFPE)) printf("SIGFPE\t");
-    if(sigismember(set,SIGHUP)) printf("SIGHUP\t");
-    if(sigismember(set,SIGILL)) printf("SIGILL\t");
-    if(sigismember(set,SIGINT)) printf("SIGINT\t");
-    if(sigismember(set,SIGIO)) printf("SIGIO\t");
-    if(sigismember(set,SIGIOT)) printf("SIGIOT\t");
-    if(sigismember(set,SIGKILL)) printf("SIGKILL\t");
-    if(sigismember(set,SIGPIPE)) printf("SIGPIPE\t");
-    if(sigismember(set,SIGPOLL)) printf("SIGPOLL\t");
-    if(sigismember(set,SIGPROF)) printf("SIGPROF\t");
-    if(sigismember(set,SIGPWR)) printf("SIGPWR\t");
-    if(sigismember(set,SIGQUIT)) printf("SIGQUIT\t");
-    if(sigismember(set,SIGSEGV)) printf("SIGSEGV\t");
-    if(sigismember(set,SIGSTKFLT)) printf("SIGSTKFLT\t");
-    if(sigismember(set,SIGSTOP)) printf("SIGSTOP\t");
-    if(sigismember(set,SIGSYS)) printf("SIGSYS\t");
-    if(sigismember(set,SIGTERM)) printf("SIGTERM\t");
-    if(sigismember(set,SIGTRAP)) printf("SIGTRAP\t");
-    if(sigismember(set,SIGTSTP)) printf("SIGTSTP\t");
-    if(sigismember(set,SIGTTIN)) printf("SIGTTIN\t");
-    if(sigismember(set,SIGTTOU)) printf("SIGTTOU\t");
-    if(sigismember(set,SIGURG)) printf("SIGURG\t");
-    if(sigismember(set,SIGUSR1)) printf("SIGUSR1\t");
-    if(sigismember(set,SIGUSR2)) printf("SIGUSR2\t");
-    if(sigismember(set,SIGVTALRM)) printf("SIGVTALRM\t");
-    if(sigismember(set,SIGWINCH)) printf("SIGWINCH\t");
-    if(sigismember(set,SIGXCPU)) printf("SIGXCPU\t");
-    if(sigismember(set,SIGXFSZ)) printf("SIGXFSZ\t");
-    printf("\n");
-}
-void print_current_sigset() // 打印线程的当前信号屏蔽字
-{
-    sigset_t set;
-    sigemptyset(&set);
-    sigset_t o_set;
-    if(sigprocmask(SIG_BLOCK,&set,&o_set)!=-1)
-    {
-        printf("Current sigset:\t");
-        print_sigset(&o_set);
-    }else
-    {
-        printf("sigprocmask error,because %s\n",strerror(errno));
-    }
-}
-void print_current_sigpending()//打印线程的当前未决的信号集
-{
-    sigset_t set;
-    if(sigpending(&set)!=-1)
-    {
-        printf("Current pending set:\t");
-        print_sigset(&set);
-    }else
-    {
-        printf("sigpending error,because %s\n",strerror(errno));
-    }
-}
-void print_thread_id()// 打印线程的ID
-{
-    printf("current thread_id is 0x%X\n",pthread_self());
-}
-void print_thread_equal(pthread_t tid1,pthread_t tid2)
-{
-    printf("the two thread_id is %s\n",pthread_equal(tid1,tid2)? "equal":"no equal");
-}
-VType thread_func (VType arg) //线程的工作历程，这里arg为整数
-{// arg will be set to int *
+    M_TRACE("---------  Begin test_thread_create()  ---------\n");
+    //******** 创建子线程 *********//
     pthread_mutex_lock(&mutex); //必须同步。否则多个线程的输出交叉进行
-    printf("---------Begin Thread:arg=%d--------\n",(int)arg);
-    print_thread_id();
-    print_current_sigset();
-    print_current_sigpending();
-    printf("---------End Thread--------\n");
-    pthread_mutex_unlock(&mutex);
-    return arg; //返回arg
-}
-int main(void)
-{
-    const int num=3;
-    pthread_t ids[num];
-    int thread_args[num] ;
-    thread_args[0]= 10 ;
-    thread_args[1]= 11 ;
-    thread_args[2]= 12 ;
-	//设置线程的信号屏蔽字
-    sigset_t set;
-    sigemptyset(&set);
-    sigaddset(&set,SIGPOLL);
-    sigprocmask(SIG_SETMASK,&set,NULL);
-	// 抛出SIGPOLL信号，由此产生了未决的信号
-    raise(SIGPOLL);
-	//打印父线程信息
-    printf("-------- Begin Parent Thread --------\n");
-    printf("current thread_id is 0x%X\n",pthread_self());
-    print_current_sigset();
-    print_current_sigpending();
-	// 创建子线程
-    printf("-------- Create Child Thread --------\n");
-    int ok;
-    for(int i=0;i<num;i++)
+    pthread_t threads[3];
+    for(int i=0;i<3;i++)
+        My_pthread_create(threads+i,NULL,thread_func,i);
+     pthread_mutex_unlock(&mutex);
+    //******** 等待子线程结束 *********//
+    int values[3];
+    for(int i=0;i<3;i++)
     {
-        ok=pthread_create(ids+i,NULL,thread_func,(VType)(thread_args[i]));
-        if(ok!=0) printf("create thread failed, because %s\n",strerror(ok));
+        thread_join_int(threads[i],values+i);
     }
-	//等待子线程
-    VType  return1, return2, return3;
-    pthread_join(ids[0],&return1);
-    pthread_join(ids[1],&return2);
-    pthread_join(ids[2],&return3);
-    printf("-------- Wait Child Thread --------\n");
-    printf("return1 is %d\n",(int)(return1));
-    printf("return2 is %d\n",(int)(return2));
-    printf("return3 is %d\n",(int)(return3));
-    return 0;
+    M_TRACE("---------  End test_thread_create()  ---------\n\n");
 }
 	```
 	![create_thread](../imgs/thread/create_thread.JPG)
 
-	注意：编译时必须天际 `pthread`库，在Qt中，就是在`.pro`文件中添加`LIBS += -lpthread`
+	注意：编译时必须添加 `pthread`库，在Qt中，就是在`.pro`文件中添加`LIBS += -lpthread`
 
 	可以看到：
-	- 子线程从父线程那里继承了信号屏蔽字，但是子线程清空了未决的信号集
 	- 子线程的工作例程的返回值，由父线程通过`pthread_join`来捕获
 	- 如果子线程没有使用互斥量同步，则可以看到子线程的输出交叉进行，说明了子线程的运行是并行的，而且没有先后顺序
 
@@ -243,7 +125,7 @@ int main(void)
 11. `pthread_exit`函数：线程主动退出
 
 	```
-	#include<pthread>
+	#include<pthread.h>
 	void pthread_exit(void *rval_ptr);
 	```
 	- 参数：
@@ -286,56 +168,27 @@ int main(void)
 	默认情况下，`pthread_cancel`函数会使得由`tid`标识的线程的行为表现得如同调用了`pthread_exit(PTHREAD_CANCELD)`函数。但是，`tid`标识的线程可以选择忽略取消或者控制如何被取消。
 	>`pthread_cancel`并不等待线程`tid`终止，也不保证线程`tid`终止，它仅仅提出了请求
 
-14. 示例：
+14. 示例：在`main`函数中调用`test_thread_quit`函数：
 
  	```
-#include <stdio.h>
-#include<pthread.h>
-#include<string.h>
-#include<signal.h>
-#include<errno.h>
-typedef void * VType;
-VType func_return(VType arg) //退出方式：从例程返回
+void test_thread_quit()
 {
-    printf("This thread quit from return\n");
-    return arg;
-}
-VType func_exit(VType arg) //退出方式：调用 pthread_exit
-{
-    printf("This thread quit from pthread_exit\n");
-    pthread_exit(arg);
-}
-VType func_cancel(VType arg)//退出方式：其他线程对本线程调用 pthread_cancel
-{
-    printf("This thread quit from pthread_cancel\n");
-    pause();
-    printf("never come here\n");
-}
-int main(void)
-{
-    const int num=3;
-    pthread_t ids[num];
-	// 创建子线程
-    printf("-------- Create Child Thread --------\n");
-    int ok;
-    ok=pthread_create(ids,NULL,func_return,(VType)(10));
-    if(ok!=0) printf("create thread failed, because %s\n",strerror(ok));
-    ok=pthread_create(ids+1,NULL,func_exit,(VType)(11));
-    if(ok!=0) printf("create thread failed, because %s\n",strerror(ok));
-    ok=pthread_create(ids+2,NULL,func_cancel,(VType)(12));
-    if(ok!=0) printf("create thread failed, because %s\n",strerror(ok));
-	// 等待子线程
-    VType  return1, return2, return3;
-    pthread_join(ids[0],&return1);
-    pthread_join(ids[1],&return2);
-
-    pthread_cancel(ids[2]); //cancel
-    pthread_join(ids[2],&return3);
-    printf("-------- Wait Child Thread --------\n");
-    printf("return1 is %d\n",(int)(return1));
-    printf("return2 is %d\n",(int)(return2));
-    printf("return3 is %d=%d\n",(int)(return3),PTHREAD_CANCELED);
-    return 0;
+    M_TRACE("---------  Begin test_thread_quit()  ---------\n");
+    //******** 创建子线程 *********//
+    pthread_mutex_lock(&mutex); //必须同步。否则多个线程的输出交叉进行
+    pthread_t threads[3];
+    My_pthread_create(threads+0,NULL,thread_func_return,(void*)0);
+    My_pthread_create(threads+1,NULL,thread_func_exit,(void*)1);
+    My_pthread_create(threads+2,NULL,thread_func_exit,(void*)2);
+    pthread_mutex_unlock(&mutex);
+    My_pthread_cancel(threads[2]) ; // 取消最后一个子线程
+    //******** 等待子线程结束 *********//
+    int values[3];
+    for(int i=0;i<3;i++)
+    {
+        thread_join_int(threads[i],values+i);
+    }
+    M_TRACE("---------  End test_thread_quit()  ---------\n\n");
 }
 	```
 	![thread_quit](../imgs/thread/thread_quit.JPG)
@@ -366,47 +219,31 @@ int main(void)
 	每一个`pthread_cleanup_pop`都匹配了在它之前且离他最近的那个`pthread_cleanup_push`。如果	`pthread_cleanup_pop(0)`，则对应的`pthread_cleanup_push`注册的清理处理程序就不会被执行。
 
 	这两个函数有个限制：由于它们可以实现为宏，因此必须在于线程相同的作用域中以配对的形式使用。（否则程序编译不通过，在`Ubuntu 16.04`上测试是这样的）
+	> 实际上，每次遇到`pthread_cleanup_pop`，如果参数非零，则调用清理函数
 
 
-16. 示例：
+16. 示例：在`main`函数中调用`test_thread_clean`函数：
 
 	```
-#include <stdio.h>
-#include<pthread.h>
-#include<string.h>
-#include<signal.h>
-#include<errno.h>
-typedef void * VType;
-void clean_func(VType arg)
+void test_thread_clean()
 {
-    printf("clearn_up with arg %d\n",(int)arg);
-}
-VType thread_func(VType arg)
-{
-    int arg_int=(int)arg; # arg_int 为 111
-    printf("This thread quit with arg %d\n",arg_int);
-    pthread_cleanup_push(clean_func,   arg_int-2 ); # 参数 109
-    pthread_cleanup_push(clean_func,   arg_int-1 ); # 参数 110
-    pthread_cleanup_push(clean_func, arg_int+1 );   # 参数 111
-    pthread_cleanup_pop(0);
-    pthread_cleanup_pop(1);
-    pthread_cleanup_pop(2);
-    return arg;
-}
-int main(void)
-{
-    pthread_t id;
-    pthread_create(&id,NULL,thread_func,111);
-    pthread_join(id,NULL);
-    return 0;
+    M_TRACE("---------  Begin test_thread_clean()  ---------\n");
+    //******** 创建子线程 *********//
+    pthread_t thread;
+    My_pthread_create(&thread,NULL,thread_func,100);
+    //******** 等待子线程结束 *********//
+    int value;
+    thread_join_int(thread,&value);
+    M_TRACE("---------  End test_thread_clean()  ---------\n\n");
 }
 	```
 
 	![thread_clean_up](../imgs/thread/thread_clean_up.JPG)
 	
 	可以看到：
-	- 参数为 111 的那个清理函数未被执行，因为它对应的`pthread_clearnup_pop`以参数0调用（就近原则）
-	- 参数为 110 的那个清理函数首先执行。这是“顺序注册，逆序执行”的原则
+	- 第三次注册的清理函数未被执行，因为它对应的`pthread_clearnup_pop`以参数0调用（就近原则）
+	- 第二次注册的清理函数首先执行。这是“顺序注册，逆序执行”的原则
+	- 调用清理函数由`pthread_cleanup_pop`函数负责
 
 17. 默认的情况下，线程的终止状态会保存直到其他某个线程对它调用了`pthread_join`。如果线程已经被分离，则线程的底层存储资源可以在线程终止时立即被收回。
 	- 在线程被分离后，我们不能用`pthread_join`函数等待它的终止状态。
@@ -424,32 +261,26 @@ int main(void)
 		- 成功：返回 0
 		- 失败：返回错误码
 
-19. 示例：
+19. 示例：在`main`函数中调用`test_thread_detach`函数：
 
 	```
-#include <stdio.h>
-#include<pthread.h>
-#include<string.h>
-#include<signal.h>
-#include<errno.h>
-typedef void * VType;
-VType thread_func(VType arg)
+void test_thread_detach()
 {
-    printf("This thread will be set detached\n");
-    sleep(2); //等待父线程设置 pthread_detach
-    return arg;
-}
-int main(void)
-{
-    pthread_t id;
-    int ok;
-    pthread_create(&id,NULL,thread_func,111);
-    ok=pthread_detach(id);
-    if(ok!=0) printf("pthread_detach error ,because %s\n",strerror(ok));
-    sleep(2); //等待子线程执行
-    ok=pthread_join(id,NULL);
-    if(ok!=0) printf("pthread_join error ,because %s\n",strerror(ok));
-    return 0;
+    M_TRACE("---------  Begin test_thread_detach()  ---------\n");
+    //******** 创建子线程 *********//
+    pthread_mutex_lock(&mutex); //必须同步。否则多个线程的输出交叉进行
+    for(int i=0;i<3;i++)
+        My_pthread_create(threads+i,NULL,thread_func,i);
+    pthread_mutex_unlock(&mutex);
+
+    My_pthread_detach(threads[0]);// 主线程会设置第一个子线程为分离状态
+    //******** 等待子线程结束 *********//
+    int values[3];
+    for(int i=0;i<3;i++)
+    {
+        thread_join_int(threads[i],values+i);
+    }
+    M_TRACE("---------  End test_thread_detach()  ---------\n\n");
 }
 	```
 
@@ -458,45 +289,35 @@ int main(void)
 	可以看到：
 	- 一旦对子线程调用了`pthread_detach`，就无法对子线程调用`pthread_join`了
 
-20. 示例：任何线程都能`pthread_join`子线程；但是子线程不能等待主线程
+20. 示例：在`main`函数中调用`test_thread_join`函数。任何线程都能`pthread_join`子线程；但是子线程不能等待主线程
 
 	```
-#include <stdio.h>
-#include<pthread.h>
-#include<string.h>
-#include<signal.h>
-#include<errno.h>
-typedef void * VType;
-pthread_t id[3];
-VType thread_func1(VType arg) // 子线程1
+void test_thread_join()
 {
-    printf("Child Thread1\n");
-    return arg;
-}
-VType thread_func2(VType arg) // 子线程2
-{
-    VType val;
-    pthread_join(id[1],&val);  // 子线程2等待子线程1的结束
-    printf("Child Thread2 wait Child Thread 1:val is %d\n",(int)val);
-    return arg;
-}
-int main(void)
-{
-    id[0]=pthread_self();
-    pthread_create(id+1,NULL,thread_func1,111);
-    pthread_create(id+2,NULL,thread_func2,222);
-    sleep(2);
-    return 0;
+    M_TRACE("---------  Begin test_thread_join()  ---------\n");
+    //******** 创建子线程 *********//
+    pthread_mutex_lock(&mutex); //必须同步。否则多个线程的输出交叉进行
+    threads[0]=pthread_self();
+    for(int i=0;i<3;i++)
+        My_pthread_create(threads+i+1,NULL,thread_func,i);
+    pthread_mutex_unlock(&mutex);
+    //******** 等待子线程结束 *********//
+    int values[3];
+    for(int i=0;i<2;i++)
+    {
+        thread_join_int(threads[2+i],values+i);
+    }
+    M_TRACE("---------  End test_thread_join()  ---------\n\n");
 }
 	```
 
 	![pthread_join](../imgs/thread/pthread_join.JPG)	
 
 	可以看到：
-	- 子线程2可以等待子线程1的结束
-	- 可以编程验证：
-		- 任何子线程无法等待主线程的结束。因为一旦主线程从`main`函数返回，则整个进程结束，则子线程的`pthread_join`也就没有返回了（子线程阻塞，还没来得及被唤醒，进程就结束了）
-		- 任何子线程可以取消主线程。此时一旦取消主线程，则进程立即结束。
+	- 子线程2可以等待子线程3的结束
+	- 任何子线程无法等待主线程的结束。因为一旦主线程从`main`函数返回，则整个进程结束，则子线程的`pthread_join`也就没有返回了（子线程阻塞，还没来得及被唤醒，进程就结束了）
+
+	另外可以验证：任何子线程可以取消主线程。此时一旦取消主线程，则进程立即结束。
 
 ## 3. 线程同步
 
@@ -581,7 +402,7 @@ int main(void)
 	#include<pthread.h>
 	#include<time.h>
 	int pthread_mutex_timedlock(pthread_mutex_t *restrict mutex,
-		const struct timespec *retstrict tsptr);
+		const struct timespec *restrict tsptr);
 	```
 
 	- 参数：
@@ -596,162 +417,36 @@ int main(void)
 	- 如果互斥量处于锁定状态，那么函数将阻塞到`tsptr`指定的时刻。在到达超时时刻时，`pthread_mutex_timedlock`不再试图对互斥量进行加锁，而是返回错误码`ETIMEOUT`
 	> 可以使用`clock_gettime`函数获取`timespec`结构表示的当前时间。但是目前并不是所有平台都支持这个函数。因此也可以用`gettimeofday`函数获取`timeval`结构表示的当前时间，然后将这个时间转换为`timespec`结构。
 
-7. 示例
+7. 实例：在`main`函数中调用`test_mutex`函数：
 
 	```
-#include <stdio.h>
-#include<pthread.h>
-#include<string.h>
-#include<unistd.h>
-#include<time.h>
-typedef void * VType;
-pthread_mutex_t mutex;
-// 共享的数据，每个线程都会读取和修改它
-int shared_int;
-//不用互斥量来访问数据
-VType thread_func(VType arg)
+void test_mutex()
 {
-    pthread_t id=pthread_self();
-    int read_data=shared_int;
-    printf("\tIn thread 0x%x, read shared_int :%d. Then shared_int +1\n",id,read_data);
-    shared_int=read_data+1;
-    return arg;
-}
-//用互斥量来访问数据
-VType thread_func_lock(VType arg)
-{
-    pthread_t id=pthread_self();
-    pthread_mutex_lock(&mutex);
-    int read_data=shared_int;
-    printf("\tIn thread 0x%x, read shared_int :%d. Then shared_int +1\n",id,read_data);
-    shared_int=read_data+1;
-    pthread_mutex_unlock(&mutex);
-    return arg;
-}
-// 加锁两次
-VType thread_func_lock_twice(VType arg)
-{
-    pthread_t id=pthread_self();
-    pthread_mutex_lock(&mutex);
-    pthread_mutex_lock(&mutex);
-    printf("\tLock Twice:In thread 0x%x, read shared_int :%d.\n",id,shared_int);
-    pthread_mutex_unlock(&mutex);
-    return arg;
-}
-// 解锁两次
-VType thread_func_unlock_twice(VType arg)
-{
-    pthread_t id=pthread_self();
-    pthread_mutex_lock(&mutex);
-    printf("\tUnLock Twice:In thread 0x%x, read shared_int :%d.\n",id,shared_int);
-    pthread_mutex_unlock(&mutex);
-    int ok=pthread_mutex_unlock(&mutex);
-    if(ok!=0) printf("\t the second pthread_mutex_unlock error,because %s\n",
-		strerror(ok));
-    else printf("\t  the second  pthread_mutex_unlock success\n");
-    return arg;
-}
-// 加锁定时
-VType thread_func_timed_lock(VType arg)
-{
-    struct timespec timer;
-    clock_gettime(CLOCK_REALTIME,&timer);
-    timer.tv_sec+=1;
-    pthread_t id=pthread_self();
-    int ok=pthread_mutex_timedlock(&mutex,&timer);
-    if(ok!=0)
-    {
-        printf("\tIn thread  0x%x,timed lock failed ,because %s\n",id,strerror(ok));
-        pthread_mutex_lock(&mutex);
-    }
-    printf("\tIn thread  0x%x, , read shared_int :%d.\n",id,shared_int);
-    sleep(1);
-    pthread_mutex_unlock(&mutex);
-    return arg;
-}
-// 尝试加锁
-VType thread_func_try_lock(VType arg)
-{
-    pthread_t id=pthread_self();
-    int ok=pthread_mutex_trylock(&mutex);
-    if(ok!=0)
-    {
-        printf("\tIn thread  0x%x,trylock failed ,because %s\n",id,strerror(ok));
-        pthread_mutex_lock(&mutex);
-    }
-    printf("\tIn thread  0x%x, read shared_int :%d.\n",id,shared_int);
-    sleep(1);
-    pthread_mutex_unlock(&mutex);
-    return arg;
-}
-int main(void)
-{
+    M_TRACE("---------  Begin test_mutex()  ---------\n");
+    //********** 初始化 *************//
+    shared_int=99;
+    My_pthread_mutex_init(&mutex,NULL);
+    //******** 创建子线程 *********//
     const int N=5;
-    pthread_mutex_init(&mutex,NULL);
-    pthread_t ids[N];
-    printf("Test no mutex:\n");
-    shared_int=0;
+    pthread_t threads[N];
     for(int i=0;i<N;i++)
-    {
-        pthread_create(ids+i,NULL,thread_func,0);
-    }
+        My_pthread_create(threads+i,NULL,thread_func,0);
+    //******** 等待子线程结束 *********//
+    int values[N];
     for(int i=0;i<N;i++)
-    {
-        pthread_join(ids[i],NULL);
-    }
-    printf("In main:shared_int =%d\n",shared_int);
+        thread_join_int(threads[i],values+i);
 
-    printf("Test mutex:\n");
-    shared_int=0;
-    for(int i=0;i<N;i++)
-    {
-        pthread_create(ids+i,NULL,thread_func_lock,0);
-    }
-    for(int i=0;i<N;i++)
-    {
-        pthread_join(ids[i],NULL);
-    }
-    printf("In main:shared_int =%d\n",shared_int);
-
-    printf("Test try_mutex:\n");
-    for(int i=0;i<N;i++)
-    {
-        pthread_create(ids+i,NULL,thread_func_try_lock,0);
-    }
-    for(int i=0;i<N;i++)
-    {
-        pthread_join(ids[i],NULL);
-    }
-
-
-    printf("Test timed_mutex:\n");
-    for(int i=0;i<N;i++)
-    {
-        pthread_create(ids+i,NULL,thread_func_timed_lock,0);
-    }
-    for(int i=0;i<N;i++)
-    {
-        pthread_join(ids[i],NULL);
-    }
-
-    printf("Test unlock_twice:\n");
-    pthread_create(ids,NULL,thread_func_unlock_twice,0);
-    pthread_join(ids[0],NULL);
-
-
-    printf("Test lock_twice:\n");
-    pthread_create(ids,NULL,thread_func_lock_twice,0);
-    pthread_join(ids[0],NULL);
-
-    pthread_mutex_destroy(&mutex);
-    return 0;
+    My_pthread_mutex_destroy(&mutex);
+    M_TRACE("---------  End test_mutex()  ---------\n\n");
 }
-
-
 	```
 	![mutex](../imgs/thread/mutex.JPG)
-	从结果可见：
-	- 如果不加锁，子线程之间相互竞争。最终主线程得到的是不正确的值（5个子线程，每个子线程家1，应该为5）。而且每次运行的情况可能还有不同
+	从结果可见：如果不加锁，子线程之间相互竞争。最终主线程得到的是不正确的值。而且每次运行的情况可能还有不同
+	
+	如果使用`pthread_mutex_lock`，结果是正确的。
+	![mutex2](../imgs/thread/mutex2.JPG)
+
+	注意：
 	- 使用`pthread_mutex_trylock`时，如果不能加锁则直接返回`EBUSY`；使用`pthread_mutex_timedlock`时，如果超时则直接返回`ETIMEOUT`
 	- 对于线程持有的锁，可以解锁多次。也就是当线程不再持有锁时，也可以调用`pthread_mutex_unlock`而不报错
 	- 如果线程已经持有了锁，再次调用`pthread_mutex_lock`，则线程彻底死锁。
@@ -856,84 +551,36 @@ int main(void)
 	- 如果不允许加锁，那么函数将阻塞到`tsptr`指定的时刻。在到达超时时刻时，`pthread_mutex_timedlock`不再试图对读写锁进行加锁，而是返回错误码`ETIMEOUT`
 	> 可以使用`clock_gettime`函数获取`timespec`结构表示的当前时间。但是目前并不是所有平台都支持这个函数。因此也可以用`gettimeofday`函数获取`timeval`结构表示的当前时间，然后将这个时间转换为`timespec`结构。
 
-8. 示例
+8. 示例：在`main`函数中调用`test_rwlock`函数：
 
 	```
-#include <stdio.h>
-#include<pthread.h>
-#include<string.h>
-#include<unistd.h>
-typedef void * VType;
-pthread_rwlock_t rwlock;
-// 共享的数据，每个线程都会读取和修改它
-int shared_int;
-VType thread_func_rdlock(VType arg)
+void test_rwlock()
 {
-    sleep(1);
-    pthread_t id=pthread_self();
-    pthread_rwlock_rdlock(&rwlock);
-    int read_data=shared_int;
-    printf("\t1:In thread 0x%x, read shared_int :%d. \n",id,read_data);
-    sleep(1);
-    printf("\t2:In thread 0x%x, read shared_int :%d. \n",id,read_data);
-    pthread_rwlock_unlock(&rwlock);
-    return arg;
-}
-VType thread_func_wrlock(VType arg)
-{
-    sleep(1);
-    pthread_t id=pthread_self();
-    pthread_rwlock_wrlock(&rwlock);
-    int read_data=shared_int;
-    shared_int=read_data+1;
-    printf("\t1:In thread 0x%x, read shared_int :%d.
-		 Then shared_int +1\n",id,read_data);
-    sleep(1);
-    printf("\t2:In thread 0x%x, read shared_int :%d.
-		 Then shared_int +1\n",id,read_data);
-    pthread_rwlock_unlock(&rwlock);
-    return arg;
-}
-int main(void)
-{
+    M_TRACE("---------  Begin test_rwlock()  ---------\n");
+    //********** 初始化 *************//
+    shared_int=99;
+    My_pthread_rwlock_init(&rwlock,NULL);
+    //******** 创建子线程 *********//
     const int N=5;
-    pthread_rwlock_init(&rwlock,NULL);
-    pthread_t ids[N];
-    printf("Add %d rdlocks:\n",N);
-    shared_int=0;
+    pthread_t threads[N];
+    int rw_int[]={1,1,3,1,1}; // 每个线程的锁的类型
     for(int i=0;i<N;i++)
-        pthread_create(ids+i,NULL,thread_func_rdlock,0);
-
+        My_pthread_create(threads+i,NULL,thread_func,rw_int[i]);
+    //******** 等待子线程结束 *********//
+    int values[N];
     for(int i=0;i<N;i++)
-        pthread_join(ids[i],NULL);
+        thread_join_int(threads[i],values+i);
 
-    printf("Add %d wrlocks:\n",N);
-    for(int i=0;i<N;i++)
-        pthread_create(ids+i,NULL,thread_func_wrlock,0);
-
-    for(int i=0;i<N;i++)
-        pthread_join(ids[i],NULL);
-
-    printf("Add %d rdlocks then 1 wrlocks then %d rdlocks:\n",(N-1)/2,(N-1)/2);
-    for(int i=0;i<(N-1)/2;i++)
-        pthread_create(ids+i,NULL,thread_func_rdlock,0);
-    pthread_create(ids+(N-1)/2,NULL,thread_func_wrlock,0);
-    for(int i=(N-1)/2+1;i<N;i++)
-        pthread_create(ids+i,NULL,thread_func_rdlock,0);
-
-    for(int i=0;i<N;i++)
-        pthread_join(ids[i],NULL);
-
-    pthread_rwlock_destroy(&rwlock);
-    return 0;
+    My_pthread_rwlock_destroy(&rwlock);
+    M_TRACE("---------  End test_rwlock()  ---------\n\n");
 }
 	```
 	![rwlock](../imgs/thread/rwlock.JPG)
-	为了便于观察,我们每个线程都输出两条同样的消息,且两条消息之间睡眠1秒.可以看到:
-	-  测试读锁定中，每个子线程都对读写锁加读锁。所有的子线程都能交叉执行。间接证明了多个线程可以同时对读写锁读锁定
-	- 测试写锁定中，每个子线程都对读写锁加写锁。所有的子线程必须串行执行。间接证明了多个线程不能同时对读写锁写锁定
-	- 测试读写锁的读、写序列时，四个子线程对读写锁加读锁，一个子线程对读写锁加写锁。加读锁的子线程并行执行。加写锁的子线程等其他线程释放读写锁后才能执行
-		> 测试结果也出现了另一种情况：加写锁的子线程首先执行。释放了读写锁之后，加读锁的子线程并行执行
+	可以看到，在读锁序列中，所有的子线程都能对读锁进行加锁，因此会并行执行。因此如果此时写共享数据，发现结果会不正确。
+	
+	如果我们采用写锁序列，则子线程会串行依次进行。结果如下：
+	![rwlock2](../imgs/thread/rwlock2.JPG)
+
 
 ### 3.3 条件变量
 
@@ -1024,64 +671,47 @@ int main(void)
 
 	这里真实的条件是：缓冲区中有了有效的数据！而`cond`条件变量只是真实条件的一个标记！
 
-7. 示例：
+7. 示例：在`main`函数中调用`test_condition`函数：
 
 	```
-#include <stdio.h>
-#include<pthread.h>
-#include<string.h>
-#include<unistd.h>
-typedef void * VType;
-pthread_cond_t cond;
-pthread_mutex_t mutex;
-// 共享的数据，每个线程都会读取和修改它
-int shared_int;
-VType thread_func_wait_cond(VType arg)
+void test_condition()
 {
-    pthread_t id=pthread_self();
-    printf("In thread 0x%x,Wait untile shared_int=5\n",id);
-    pthread_mutex_lock(&mutex);
-    pthread_cond_wait(&cond,&mutex);
-    printf("In thread 0x%x,shared_int=10\n",id);
-    pthread_mutex_unlock(&mutex);
-    return arg;
-}
-VType thread_func_sig_cond(VType arg)
-{
-    sleep(1);
-    pthread_t id=pthread_self();
-    pthread_mutex_lock(&mutex);
-    int read_data=shared_int;
-    printf("\t1:In thread 0x%x, read :%d,then +1\n",id,read_data);
-    shared_int=read_data+1;
-    if(shared_int==5)
-        pthread_cond_signal(&cond);
-    pthread_mutex_unlock(&mutex);
-    return arg;
-}
-int main(void)
-{
-    pthread_cond_init(&cond,NULL);
-    pthread_mutex_init(&mutex,NULL);
-
-    const int N=7;
-    pthread_t ids[N];
+    M_TRACE("---------  Begin test_condition()  ---------\n");
+    //********** 初始化 *************//
     shared_int=0;
-    for(int i=0;i<N-1;i++)
-        pthread_create(ids+i,NULL,thread_func_sig_cond,0);
-    pthread_create(ids+N-1,NULL,thread_func_wait_cond,0);
+    My_pthread_mutex_init(&mutex,NULL);
+    My_pthread_cond_init(&cond,NULL);
+    //******** 创建子线程 *********//
+    const int N=2;
 
+    pthread_t thread_waits[N];
+    pthread_t thread_signals[N];
+
+    My_pthread_mutex_lock(&mutex); // 加锁
     for(int i=0;i<N;i++)
-        pthread_join(ids[i],NULL);
+        My_pthread_create(thread_waits+i,NULL,thread_func_wait,0); //这些线程都在等待事件的发生
+    My_pthread_mutex_unlock(&mutex); // 解锁
 
-    pthread_mutex_destroy(&mutex);
-    pthread_cond_destroy(&cond);
-    return 0;
+    My_pthread_mutex_lock(&mutex); // 加锁
+    for(int i=0;i<N;i++)
+        My_pthread_create(thread_signals+i,NULL,thread_func_signal,0); //这些线程都在发送事件发生的信号
+    My_pthread_mutex_unlock(&mutex); // 解锁
+    //******** 等待子线程结束 *********//
+    int values[N];
+    for(int i=0;i<N;i++)
+        thread_join_int(thread_waits[i],values+i);
+    for(int i=0;i<N;i++)
+        thread_join_int(thread_signals[i],values+i);
+
+    My_pthread_mutex_destroy(&mutex);
+    My_pthread_cond_destroy(&cond);
+    M_TRACE("---------  End test_condition()  ---------\n\n");
 }
+
 	```
 	![cond](../imgs/thread/cond.JPG)
-	这里子线程要等待的条件是： `shared_int==5`。
-	- 为了保证`pthread_cond_wait`醒来时，`shared_int`一定是5，则必须用互斥量加锁（否则可能有其他线程在`pthread_cond_wait`返回的时候修改了`shared_int`）
+	这里子线程要等待的条件是： `shared_int>=3`。
+	- 为了保证`pthread_cond_wait`醒来时，`shared_int`一定是大于等于 3，则必须用互斥量加锁（否则可能有其他线程在`pthread_cond_wait`返回的时候修改了`shared_int`）
 	- 至于 `pthread_cond_signal`调用时需不需要加锁，则不一定
 		- 如果线程执行 `pthread_cond_signal` 时，线程持有锁，则仅当线程释放锁的时候，阻塞在`pthread_cond_wait`的线程才会被唤醒。因为`pthread_cond_wait`需要获得锁
 		- 如果线程执行 `pthread_cond_signal` 时，线程不持有锁，则阻塞在`pthread_cond_wait`的线程马上被唤醒
@@ -1145,99 +775,32 @@ int main(void)
 	- 试图对未加锁的自旋锁进行解锁，结果也未定义
 	- 不要在持有自旋锁的情况下调用可能使线程休眠的函数。如果持有自旋锁的线程休眠，会浪费CPU资源，因为其他线程需要获取自旋锁要等待的时间就延长了
 
-8. 示例：
+8. 示例：在`main`函数中调用`test_spinlock`函数：
 
 	```
-#include <stdio.h>
-#include<pthread.h>
-#include<string.h>
-typedef void * VType;
-pthread_spinlock_t lock;
-// 共享的数据，每个线程都会读取和修改它
-int shared_int;
-VType thread_func(VType arg)
+void test_spinlock()
 {
-    pthread_t id=pthread_self();
-    int read_data=shared_int;
-    printf("\tIn thread 0x%x, read shared_int :%d. 
-		Then shared_int +1\n",id,read_data);
-    shared_int=read_data+1;
-    return arg;
-}
-VType thread_func_lock(VType arg)
-{
-    pthread_t id=pthread_self();
-    pthread_spin_lock(&lock);
-    int read_data=shared_int;
-    printf("\tIn thread 0x%x, read shared_int :%d. Then shared_int +1\n",id,read_data);
-    shared_int=read_data+1;
-    pthread_spin_unlock(&lock);
-    return arg;
-}
-// 加锁两次
-VType thread_func_lock_twice(VType arg)
-{
-    pthread_t id=pthread_self();
-    pthread_spin_lock(&lock);
-    pthread_spin_lock(&lock);
-    printf("\tLock Twice:In thread 0x%x, read shared_int :%d.\n",id,shared_int);
-    pthread_spin_unlock(&lock);
-    return arg;
-}
-// 解锁两次
-VType thread_func_unlock_twice(VType arg)
-{
-    pthread_t id=pthread_self();
-    pthread_spin_lock(&lock);
-    printf("\tUnLock Twice:In thread 0x%x, read shared_int :%d.\n",id,shared_int);
-    pthread_spin_unlock(&lock);
-    int ok=pthread_spin_unlock(&lock);
-    if(ok!=0) printf("\t the second pthread_spin_unlock error,
-		because %s\n",strerror(ok));
-    else printf("\t  the second  pthread_spin_unlock success\n");
-    return arg;
-}
-int main(void)
-{
-    const int N=5;
-    pthread_spin_init(&lock,NULL);
-    pthread_t ids[N];
-    printf("Test no spin lock:\n");
+    M_TRACE("---------  Begin test_spinlock()  ---------\n");
+    //********** 初始化 *************//
     shared_int=0;
+    My_pthread_spin_init(&spin_lock,PTHREAD_PROCESS_PRIVATE);
+    //******** 创建子线程 *********//
+    const int N=3;
+    pthread_t threads[N];
+
+    My_pthread_spin_lock(&spin_lock); // 加锁
     for(int i=0;i<N;i++)
-    {
-        pthread_create(ids+i,NULL,thread_func,0);
-    }
+        My_pthread_create(threads+i,NULL,thread_func,0);
+    My_pthread_spin_unlock(&spin_lock); // 解锁
+    //******** 等待子线程结束 *********//
+    int values[N];
     for(int i=0;i<N;i++)
-    {
-        pthread_join(ids[i],NULL);
-    }
-    printf("In main:shared_int =%d\n",shared_int);
+        thread_join_int(threads[i],values+i);
 
-    printf("Test spin lock:\n");
-    shared_int=0;
-    for(int i=0;i<N;i++)
-    {
-        pthread_create(ids+i,NULL,thread_func_lock,0);
-    }
-    for(int i=0;i<N;i++)
-    {
-        pthread_join(ids[i],NULL);
-    }
-    printf("In main:shared_int =%d\n",shared_int);
-
-    printf("Test unlock_twice:\n");
-    pthread_create(ids,NULL,thread_func_unlock_twice,0);
-    pthread_join(ids[0],NULL);
-
-
-    printf("Test lock_twice:\n");
-    pthread_create(ids,NULL,thread_func_lock_twice,0);
-    pthread_join(ids[0],NULL);
-
-    pthread_spin_destroy(&lock);
-    return 0;
+    My_pthread_spin_destroy(&spin_lock);
+    M_TRACE("---------  End test_spinlock()  ---------\n\n");
 }
+
 	```
 	![spinlock](../imgs/thread/spinlock.JPG)
 	可以看到：
@@ -1293,44 +856,26 @@ int main(void)
 
 	一旦到达屏障计数值，而且线程处于非阻塞状态，那么屏障就可以重用（即屏障计数有从零开始）。此时屏障的计数目标数量仍然不变。如果你希望改变计数的目标数量（比如扩大到达线程的目标数量），则必须再一次调用`pthread_barrier_init`函数。
 
-5. 示例：
+5. 示例：在`main`函数中调用`test_spinlock`函数：
 
 	```
-#include <stdio.h>
-#include<pthread.h>
-#include<string.h>
-#include<unistd.h>
-typedef void * VType;
-pthread_barrier_t barr;
-VType thread_func(VType arg)
+void test_barrier()
 {
-    pthread_t id=pthread_self();
-    printf("In thread 0x%x,before barrier\n",id);
-    sleep(arg);
-    int ok=pthread_barrier_wait(&barr);
-    if(ok==PTHREAD_BARRIER_SERIAL_THREAD)
-    {
-        printf("\nThe last thread 0x%x comes here,PTHREAD_BARRIER_SERIAL_THREAD
-			=%d\n\n",id,PTHREAD_BARRIER_SERIAL_THREAD);
-    }
-    printf("In thread 0x%x,after barrier\n",id);
-    return arg;
-}
-int main(void)
-{
-    const int N=7;
-    pthread_barrier_init(&barr,NULL,N);
-
-    pthread_t ids[N];
-
+    M_TRACE("---------  Begin test_barrier()  ---------\n");
+    const int N=3;
+    //********** 初始化 *************//
+    My_pthread_barrier_init(&barrier,NULL,N);
+    //******** 创建子线程 *********//
+    pthread_t threads[N];
     for(int i=0;i<N;i++)
-        pthread_create(ids+i,NULL,thread_func,i+1);
-
+        My_pthread_create(threads+i,NULL,thread_func,0);
+    //******** 等待子线程结束 *********//
+    int values[N];
     for(int i=0;i<N;i++)
-        pthread_join(ids[i],NULL);
+        thread_join_int(threads[i],values+i);
 
-    pthread_barrier_destroy(&barr);
-    return 0;
+    My_pthread_barrier_destroy(&barrier);
+    M_TRACE("---------  End test_barrier()  ---------\n\n");
 }
 	```
 
